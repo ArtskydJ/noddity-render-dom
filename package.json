@@ -1,0 +1,32 @@
+{
+  "name": "noddity-render-dom",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArtskydJ/noddity-render-dom.git"
+  },
+  "keywords": [
+    "noddity",
+    "dom",
+    "renderer",
+    "update",
+    "ractive"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ArtskydJ/noddity-render-dom/issues"
+  },
+  "homepage": "https://github.com/ArtskydJ/noddity-render-dom#readme",
+  "dependencies": {
+    "noddity-renderer": "^4.0.0-alpha.1"
+  },
+  "devDependencies": {
+    "tape": "^4.2.0"
+  }
+}
