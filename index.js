@@ -1,8 +1,79 @@
 var render = require('noddity-renderer')
 var Ractive = require('ractive')
 var extend = require('xtend')
+var uuid = require('random-uuid-v4')
+var asyncAll = require('async-all')
 
 var NODDITY_SPAN_SELECTOR = '.noddity-template[data-noddity-post-file-name][data-noddity-template-arguments]'
+
+function normalizePartialName(partialName) {
+	return partialName.replace(/\./g, '_')
+}
+
+function makePartialString(partialName, partialContext) {
+	partialContext = JSON.stringify(partialContext) || ''
+	return '{{>' + partialName + ' ' + partialContext + '}}'
+}
+
+function fileNameHasPartial(ractive) {
+	return function (fileName) {
+		return !ractive.partials[normalizePartialName(fileName)]
+	}
+}
+
+function getFileNames(nodes) {
+	var fileNameMap = nodes.reduce(function (fileNameMap, node) {
+		var fileName = node.getAttribute('data-noddity-post-file-name')
+		fileNameMap[fileName] = true
+		return fileNameMap
+	}, {})
+	return Object.keys(fileNameMap)
+}
+
+function createContextReference(node) {
+	var templateId = node.getAttribute('data-noddity-template-id')
+	if (!templateId) {
+		templateId = uuid()
+		node.setAttribute('data-noddity-template-id', templateId)
+		node.innerHTML = makePartialString(templateId) // drop {{>123-12-12-1234}} into the dom
+	}
+}
+
+function scan(getPost, ractive) {
+	var nodes = ractive.findAll(NODDITY_SPAN_SELECTOR)
+
+	nodes.forEach(createContextReference)
+
+	var fileNames = getFileNames(nodes)
+	var newFileNames = fileNames.filter(fileNameHasPartial(ractive))
+
+	var getNewPosts = newFileNames.map(function (fileName) {
+		return function (next) {
+			getPost(fileName, next)
+		}
+	})
+
+	asyncAll(getNewPosts, function (err, posts) {
+		posts.forEach(function (post) {
+			ractive.resetPartial(post.filename, post.content)
+		})
+
+		nodes.forEach(function (node) {
+			var templateId = node.getAttribute('data-noddity-template-id')
+			if (!ractive.partials[templateId]) {
+				var postFileName = node.getAttribute('data-noddity-post-file-name')
+				var templateArgs = node.getAttribute('data-noddity-template-arguments')
+				templateArgs = JSON.parse(templateArgs) // do this safely?
+				var context = extend(post.metadata, templateArgs)
+
+				var contextPartialContent = makePartialString(postFileName, context)
+				ractive.resetPartial(templateId, contextPartialContent)
+			}
+		})
+
+		scan(getPost, ractive)
+	})
+}
 
 /*
 options is an object like:
@@ -19,34 +90,11 @@ module.exports = function getRenderedPostWithTemplates(rootPost, options) {
 	}
 	var getPost = options.butler.getPost
 
-	var rootData = extend(options.data, rootPost.metadata)
-	var rootRactive = new Ractive({
+	var ractive = new Ractive({
 		el: options.el,
 		template: render(rootPost, options.linkifier),
-		data: rootData
+		data: extend(options.data, rootPost.metadata)
 	})
 
-	var childRactive = null
-
-	function switchPost(postName) {
-		var node = rootRactive.find('#noddity-entry-point')
-		if (childRactive) childRactive.teardown()
-		getPost(postName, function(err, newPost) {
-			childRactive = new Ractive({
-				template: render(newPost, options.linkifier),
-				data: extend(rootData, newPost.metadata)
-			})
-		})
-	}
-
-	/*
-	ractive find all noddity template divs
-	for each div found:
-		create a ractive obj with those attributes
-		make the child ractive listen on its parents demise
-
-
-	*/
-
-	return switchPost
-})
+	scan(getPost, ractive)
+}
