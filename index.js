@@ -3,40 +3,34 @@ var Ractive = require('ractive')
 var extend = require('xtend')
 var uuid = require('random-uuid-v4')
 var asyncAll = require('async-all')
+Ractive.DEBUG = false;
 
-var NODDITY_SPAN_SELECTOR = '.noddity-template[data-noddity-post-file-name][data-noddity-template-arguments]'
+var VALID_NODDITY_TEMPLATE_ELEMENT = '.noddity-template[data-noddity-post-file-name][data-noddity-template-arguments]'
+var ARGUMENTS_ATTRIBUTE = 'data-noddity-template-arguments'
+var FILENAME_ATTRIBUTE = 'data-noddity-post-file-name'
 
-function normalizePartialName(partialName) {
-	return partialName.replace(/\./g, '_')
+/*
+options is an object like:
+{
+	linkifier,
+	butler,
+	el,
+	data
 }
-
-function makePartialString(partialName, partialContext) {
-	partialContext = JSON.stringify(partialContext) || ''
-	return '{{>' + partialName + ' ' + partialContext + '}}'
-}
-
-function fileNameHasPartial(ractive) {
-	return function (fileName) {
-		return !ractive.partials[normalizePartialName(fileName)]
+*/
+module.exports = function getRenderedPostWithTemplates(rootPost, options) {
+	if (!options.linkifier || !options.butler || !options.el || !options.data) {
+		throw new Error('Must haz moar options!')
 	}
-}
+	var getPost = options.butler.getPost
 
-function getFileNames(nodes) {
-	var fileNameMap = nodes.reduce(function (fileNameMap, node) {
-		var fileName = node.getAttribute('data-noddity-post-file-name')
-		fileNameMap[fileName] = true
-		return fileNameMap
-	}, {})
-	return Object.keys(fileNameMap)
-}
+	var ractive = new Ractive({
+		el: options.el,
+		template: render(rootPost, options.linkifier),
+		data: extend(options.data, rootPost.metadata)
+	})
 
-function createContextReference(node) {
-	var templateId = node.getAttribute('data-noddity-template-id')
-	if (!templateId) {
-		templateId = uuid()
-		node.setAttribute('data-noddity-template-id', templateId)
-		node.innerHTML = makePartialString(templateId) // drop {{>123-12-12-1234}} into the dom
-	}
+	scan(getPost, ractive)
 }
 
 function scan(getPost, ractive) {
@@ -75,26 +69,35 @@ function scan(getPost, ractive) {
 	})
 }
 
-/*
-options is an object like:
-{
-	linkifier,
-	butler,
-	el,
-	data
+function getFileNames(nodes) {
+	var fileNameMap = nodes.reduce(function (fileNameMap, node) {
+		var fileName = node.getAttribute('data-noddity-post-file-name')
+		fileNameMap[fileName] = true
+		return fileNameMap
+	}, {})
+	return Object.keys(fileNameMap)
 }
-*/
-module.exports = function getRenderedPostWithTemplates(rootPost, options) {
-	if (!options.linkifier || !options.butler || !options.el || !options.data) {
-		throw new Error('Must haz moar options!')
+
+function createContextReference(node) {
+	var templateId = node.getAttribute('data-noddity-template-id')
+	if (!templateId) {
+		templateId = uuid()
+		node.setAttribute('data-noddity-template-id', templateId)
+		node.innerHTML = makePartialString(templateId) // drop {{>123-12-12-1234}} into the dom
 	}
-	var getPost = options.butler.getPost
+}
 
-	var ractive = new Ractive({
-		el: options.el,
-		template: render(rootPost, options.linkifier),
-		data: extend(options.data, rootPost.metadata)
-	})
+function filenameToPartialName(partialName) {
+	return partialName.replace(/\./g, '_')
+}
 
-	scan(getPost, ractive)
+function makePartialString(partialName, partialContext) {
+	partialContext = JSON.stringify(partialContext) || ''
+	return '{{>' + partialName + ' ' + partialContext + '}}'
+}
+
+function fileNameHasPartial(ractive) {
+	return function (fileName) {
+		return !ractive.partials[filenameToPartialName(fileName)]
+	}
 }
