@@ -3,15 +3,6 @@ var test = require('tape')
 require('ractive').DEBUG = false
 
 var makeTestState = require('./helpers/test-state')
-var staticRenderer = require('../index.js')
-
-function testState(post, state, data, cb) {
-	staticRenderer(post, {
-		butler: state.butler,
-		linkifier: state.linkifier,
-		data: data
-	}, cb)
-}
 
 test('post list is properly in scope', function(t) {
 	var state = makeTestState()
@@ -27,7 +18,7 @@ test('post list is properly in scope', function(t) {
 			pathPrefix: '#!/',
 			pagePathPrefix: 'post/'
 		}
-		testState(post, state, data, function(err, html) {
+		state.render(post, data, function(err, html) {
 			t.notOk(err)
 			t.equal(html, ['<ol>',
 				'<li><a href="#!/post/file1.md">Some title</a></li>',
@@ -53,7 +44,7 @@ test('post list is properly in scope in an embedded template, and the current fi
 			pathPrefix: '#!/',
 			pagePathPrefix: 'post/'
 		}
-		testState(post, state, data, function(err, html) {
+		state.render(post, data, function(err, html) {
 			t.notOk(err)
 			t.equal(html, [
 				'<span class="noddity-template" data-noddity-post-file-name="file1.md" data-noddity-template-arguments="{}">',

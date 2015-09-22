@@ -1,4 +1,5 @@
 var TestRetrieval = require('./retrieval-stub.js')
+var staticRenderer = require('../../index.js')
 var levelmem = require('level-mem')
 var Butler = require('noddity-butler')
 var Linkify = require('noddity-linkifier')
@@ -11,11 +12,18 @@ module.exports = function testState() {
 	var butler = new Butler(retrieval, db, {
 		refreshEvery: 100
 	})
+	var linkifier = new Linkify('#/prefix')
+
+	function render(post, data, cb) {
+		staticRenderer(post, {
+			butler: butler,
+			linkifier: linkifier,
+			data: data
+		}, cb)
+	}
 
 	return {
-		butler: butler,
 		retrieval: retrieval,
-		db: db,
-		linkifier: new Linkify('#/prefix')
+		render: render
 	}
 }
