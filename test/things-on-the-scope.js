@@ -1,7 +1,5 @@
 var test = require('tape')
 
-require('ractive').DEBUG = false
-
 var makeTestState = require('./helpers/test-state')
 
 test('post list is properly in scope', function(t) {
@@ -18,15 +16,17 @@ test('post list is properly in scope', function(t) {
 			pathPrefix: '#!/',
 			pagePathPrefix: 'post/'
 		}
-		state.render(post, data, function(err, html) {
+		state.render(post, data)
+
+		setTimeout(function() {
 			t.notOk(err)
-			t.equal(html, ['<ol>',
+			t.equal(document.querySelector('#test').innerHTML, ['<ol>',
 				'<li><a href="#!/post/file1.md">Some title</a></li>',
 				'<li><a href="#!/post/file2.md">Another title</a></li>',
 				'<li><a href="#!/post/herp">Even moar title</a></li>',
 				'</ol>'].join(''))
 			t.end()
-		})
+		}, 1000)
 	})
 })
 
@@ -44,9 +44,11 @@ test('post list is properly in scope in an embedded template, and the current fi
 			pathPrefix: '#!/',
 			pagePathPrefix: 'post/'
 		}
-		state.render(post, data, function(err, html) {
+		state.render(post, data)
+
+		setTimeout(function () {
 			t.notOk(err)
-			t.equal(html, [
+			t.equal(document.querySelector('#test').innerHTML, [
 				'<span class="noddity-template" data-noddity-post-file-name="file1.md" data-noddity-template-arguments="{}">',
 					'<ol>',
 						'<li><a href="#!/post/file1.md">Some title</a></li>',
@@ -55,6 +57,6 @@ test('post list is properly in scope in an embedded template, and the current fi
 					'</ol>',
 				'container</span>container'].join(''))
 			t.end()
-		})
+		}, 1000)
 	})
 })

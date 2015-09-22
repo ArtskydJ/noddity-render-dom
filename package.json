@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "tape test/*.js"
+    "bundle": "browserify test/test.js test/things-on-the-scope.js -o test/serve/bundle.js",
+    "test": "browserify test/test.js test/things-on-the-scope.js | smokestack"
   },
   "repository": {
     "type": "git",
@@ -24,16 +25,17 @@
   },
   "homepage": "https://github.com/ArtskydJ/noddity-render-dom#readme",
   "dependencies": {
-    "async-all": "^1.0.1",
     "noddity-renderer": "^4.0.0-alpha.1",
     "ractive": "^0.7.3",
     "random-uuid-v4": "0.0.5",
+    "run-parallel": "^1.1.2",
     "xtend": "^4.0.0"
   },
   "devDependencies": {
     "level-mem": "^0.18.0",
     "noddity-butler": "^2.1.1",
     "noddity-linkifier": "^2.1.0",
+    "smokestack": "^3.3.1",
     "tape": "^4.2.0"
   }
 }
