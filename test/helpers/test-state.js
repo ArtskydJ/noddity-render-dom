@@ -14,7 +14,7 @@ module.exports = function testState() {
 	})
 	var linkifier = new Linkify('#/prefix')
 
-	if (!document.querySelector('#test')) {
+	if (typeof document !== 'undefined' && !document.querySelector('#test')) {
 		var ele = document.createElement('div')
 		ele.id = 'test'
 		document.body.appendChild(ele)

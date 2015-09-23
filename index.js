@@ -1,13 +1,13 @@
 var render = require('noddity-renderer')
 var Ractive = require('ractive')
 var extend = require('xtend')
-var uuid = require('random-uuid-v4')
-var runParallel = require('run-parallel') // using run-parallel because async-all does not support arrays.
-Ractive.DEBUG = false;
+var after = require('after')
+Ractive.DEBUG = false
 
-var VALID_NODDITY_TEMPLATE_ELEMENT = '.noddity-template[data-noddity-post-file-name][data-noddity-template-arguments]'
-var ARGUMENTS_ATTRIBUTE = 'data-noddity-template-arguments'
+var VALID_NODDITY_TEMPLATE_ELEMENT = '.noddity-template[data-noddity-post-file-name][data-noddity-template-arguments][data-noddity-partial-name]'
 var FILENAME_ATTRIBUTE = 'data-noddity-post-file-name'
+var ARGUMENTS_ATTRIBUTE = 'data-noddity-template-arguments'
+var PARTIAL_NAME_ATTRIBUTE = 'data-noddity-partial-name'
 
 /*
 options is an object like:
@@ -35,69 +35,54 @@ module.exports = function getRenderedPostWithTemplates(rootPost, options) {
 
 function scan(getPost, ractive) {
 	var nodes = ractive.findAll(VALID_NODDITY_TEMPLATE_ELEMENT)
+	var filenamesToUuidsMap = getFilenameToUuidsMap(nodes)
+	var uuidToArgumentsMap = getUuidToArgumentsMap(nodes)
 
-	nodes.forEach(createContextReference)
+	var filenamesToFetch = Object.keys(filenamesToUuidsMap).filter(filenameHasNoPartial(ractive))
 
-	var fileNames = getFileNames(nodes)
-
-	// Maybe all the logic needs to be rewritten
-	// 1. To allow for "lifecycle events" (like when the butler says "new post")
-	// 2. To avoid line 70
-	// 3. To fix the attempt to inline a partial reference (line 98)
-
-	var getNewPosts = fileNames
-		.filter(fileNameHasNoPartial(ractive)) // new file names
-		.map(function (fileName) {
-			return function (next) {
-				getPost(fileName, next)
-			}
+	if (filenamesToFetch.length > 0) {
+		var next = after(filenamesToFetch.length, function fetched(err) {
+			scan(getPost, ractive)
 		})
 
-	runParallel(getNewPosts, function (err, posts) {
-		posts.forEach(function (post) {
-			ractive.resetPartial(post.filename, post.content)
+		filenamesToFetch.forEach(function (filename) {
+			getPost(filename, function (err, post) {
+				if (!err) {
+					ractive.resetPartial(filename, post.content)
+
+					filenamesToUuidsMap[filename].forEach(function (uuid) {
+						var templateArgs = uuidToArgumentsMap[uuid]
+						var partialData = extend(post.metadata, templateArgs)
+						var context = makePartialString(filename, partialData)
+						ractive.resetPartial(uuid, context)
+					})
+				}
+				next(err)
+			})
 		})
-
-		nodes.forEach(function (node) {
-			var templateId = node.getAttribute('data-noddity-template-id')
-			if (!ractive.partials[templateId]) {
-				var postFileName = node.getAttribute('data-noddity-post-file-name')
-				var templateArgs = node.getAttribute('data-noddity-template-arguments')
-				templateArgs = JSON.parse(templateArgs) // do this safely?
-
-				// ReferenceError: post is not defined
-				// Can't get the post easily now, because the filename array was filtered to get the new posts.
-				var context = extend(post.metadata, templateArgs)
-
-				var contextPartialContent = makePartialString(postFileName, context)
-				ractive.resetPartial(templateId, contextPartialContent)
-			}
-		})
-
-		if (posts && posts.length) scan(getPost, ractive)
-	})
-}
-
-function getFileNames(nodes) {
-	var fileNameMap = nodes.reduce(function (fileNameMap, node) {
-		var fileName = node.getAttribute('data-noddity-post-file-name')
-		fileNameMap[fileName] = true
-		return fileNameMap
-	}, {})
-	return Object.keys(fileNameMap)
-}
-
-function createContextReference(node) {
-	var templateId = node.getAttribute('data-noddity-template-id')
-	if (!templateId) {
-		templateId = uuid()
-		node.setAttribute('data-noddity-template-id', templateId)
-
-		// THIS IS THE WRONG WAY TO DROP A STRING INTO THE DOM!!!
-		// I think this partial reference needs to be dropped into the template before it can be put into the dom.
-		// Does this mean we have to parse a dom string?
-		node.innerHTML = makePartialString(templateId) // drop {{>123-12-12-1234}} into the dom
 	}
+}
+
+function getFilenameToUuidsMap(nodes) {
+	return nodes.reduce(function (map, node) {
+		var filename = node.getAttribute(FILENAME_ATTRIBUTE)
+		var uuid = node.getAttribute(PARTIAL_NAME_ATTRIBUTE)
+
+		if (!map[filename]) map[filename] = []
+		map[filename].push(uuid)
+		return map
+	}, {})
+}
+
+function getUuidToArgumentsMap(nodes) {
+	return nodes.reduce(function (map, node) {
+		var uuid = node.getAttribute(PARTIAL_NAME_ATTRIBUTE)
+		var templateArgs = node.getAttribute(ARGUMENTS_ATTRIBUTE)
+		try {
+			map[uuid] = JSON.parse(templateArgs)
+		} catch (e) {}
+		return map
+	}, {})
 }
 
 function filenameToPartialName(partialName) {
@@ -109,8 +94,8 @@ function makePartialString(partialName, partialContext) {
 	return '{{>' + partialName + ' ' + partialContext + '}}'
 }
 
-function fileNameHasNoPartial(ractive) {
-	return function (fileName) {
-		return !ractive.partials[filenameToPartialName(fileName)]
+function filenameHasNoPartial(ractive) {
+	return function (filename) {
+		return !ractive.partials[filenameToPartialName(filename)]
 	}
 }
