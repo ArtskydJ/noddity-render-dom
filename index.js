@@ -5,37 +5,32 @@ var uuid = require('random-uuid-v4')
 var runParallel = require('run-parallel')
 Ractive.DEBUG = false
 
-//MAIN
-//	- RENDER(original post)
-//	- make root ractive object with the newly created template string
 module.exports = function getRenderedPostWithTemplates(post, options) {
 	if (!options.linkifier || !options.butler || !options.el || !options.data) {
 		throw new Error('Must haz moar options!')
 	}
+
+	var renderPost = render.bind(null, options.linkifier)
+
+	var rendered = renderPost(post)
+	var ractive = new Ractive({
+		el: options.el,
+		data: extend(options.data, post.metadata),
+		template: rendered.templateString
+	})
 	var util = {
 		getPost: options.butler.getPost,
-		renderPost: function (post) {
-			return render( parseTemplate(post, options.linkifier) )
-		},
-		makeRactive: function (template, metadata) {
-			return new Ractive({
-				el: options.el,
-				data: extend(options.data, metadata),
-				template: template
-			})
-		}
+		renderPost: renderPost,
+		ractive: ractive
 	}
-	scan(post, util, {}, {})
+	scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
 }
 
-// parse the original post
-// drop in the uuid partial references
-// add the uuid the the filename -> uuid and the uuid -> arguments map
-// return a template string
-function render(ast) {
+function render(linkifier, post) {
 	var filenameUuidsMap = {}
 	var uuidArgumentsMap = {}
 
+	var ast = parseTemplate(post, linkifier)
 	var templateString = ast.map(function (piece) {
 		if (piece.type === 'template') {
 			var id = '_' + uuid()
@@ -55,25 +50,8 @@ function render(ast) {
 	}
 }
 
-
-//RECURSE
-//	- for each unique file name
-//		- get that post
-//			- RENDER
-//			- set up the ractive context partial
 function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
-	var rendered = util.renderPost(post)
-
-	if (!util.ractive) { // first
-		util.ractive = util.makeRactive(rendered.templateString, post.metadata)
-		util.makeRactive = null
-	} else {
-		var partialName = filenameToPartialName(post.filename)
-		util.ractive.resetPartial(partialName, rendered.templateString)
-	}
 	var ractive = util.ractive
-	filenameUuidsMap = extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap)
-	uuidArgumentsMap = extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
 
 	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
 		var templateArgs = uuidArgumentsMap[uuid]
@@ -89,7 +67,15 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
 		return function task(next) {
 			util.getPost(filename, function (err, childPost) {
 				if (!err) {
-					scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
+					var rendered = util.renderPost(childPost)
+
+					var partialName = filenameToPartialName(childPost.filename)
+					ractive.resetPartial(partialName, rendered.templateString)
+
+					scan(childPost, util,
+						extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap),
+						extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
+					)
 				}
 				next(err)
 			})
