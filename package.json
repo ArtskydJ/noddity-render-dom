@@ -1,6 +1,6 @@
 {
   "name": "noddity-render-dom",
-  "version": "1.0.0",
+  "version": "",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -25,7 +25,6 @@
   },
   "homepage": "https://github.com/ArtskydJ/noddity-render-dom#readme",
   "dependencies": {
-    "after": "^0.8.1",
     "noddity-template-parser": "^1.0.0",
     "ractive": "^0.7.3",
     "run-parallel": "^1.1.4",
