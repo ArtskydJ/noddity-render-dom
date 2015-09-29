@@ -13,7 +13,7 @@ test('embedded templates', function(t) {
 		state.render(post, {})
 
 		setTimeout(function() {
-			t.equal(document.querySelector('#test').innerHTML, '<p>This is a <span class="noddity-template" data-noddity-post-file-name="file2.md" data-noddity-template-arguments="{}"><p>lol yeah <span class="noddity-template" data-noddity-post-file-name="herp" data-noddity-template-arguments="{&quot;1&quot;:&quot;wat&quot;}">lookit wat</span> <span class="noddity-template" data-noddity-post-file-name="herp" data-noddity-template-arguments="{&quot;1&quot;:&quot;huh&quot;}">lookit huh</span></p></span> post that I <em>totally</em> wrote</p>')
+			t.equal(document.querySelector('body').innerHTML, '<p>This is a <p>lol yeah lookit wat lookit huh</p> post that I <em>totally</em> wrote</p>')
 			t.end()
 		}, 1000)
 	})
@@ -30,7 +30,7 @@ test('three markdown files deep', function(t) {
 		state.render(post, {})
 
 		setTimeout(function() {
-			t.equal(document.querySelector('#test').innerHTML, '<p>This is a <span class="noddity-template" data-noddity-post-file-name="file2.md" data-noddity-template-arguments="{}"><p>lol yeah <span class="noddity-template" data-noddity-post-file-name="file3.md" data-noddity-template-arguments="{&quot;1&quot;:&quot;wat&quot;}"><p>lookit wat</p></span> <span class="noddity-template" data-noddity-post-file-name="file3.md" data-noddity-template-arguments="{&quot;1&quot;:&quot;huh&quot;}"><p>lookit huh</p></span></p></span> post that I <em>totally</em> wrote</p>')
+			t.equal(document.querySelector('body').innerHTML, '<p>This is a <p>lol yeah <p>lookit wat</p> <p>lookit huh</p></p> post that I <em>totally</em> wrote</p>')
 			t.end()
 		}, 1000)
 	})

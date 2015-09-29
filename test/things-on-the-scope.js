@@ -20,10 +20,11 @@ test('post list is properly in scope', function(t) {
 
 		setTimeout(function() {
 			t.notOk(err)
-			t.equal(document.querySelector('#test').innerHTML, ['<ol>',
-				'<li><a href="#!/post/file1.md">Some title</a></li>',
-				'<li><a href="#!/post/file2.md">Another title</a></li>',
-				'<li><a href="#!/post/herp">Even moar title</a></li>',
+			t.equal(document.querySelector('body').innerHTML, [
+				'<ol>',
+					'<li><a href="#!/post/file1.md">Some title</a></li>',
+					'<li><a href="#!/post/file2.md">Another title</a></li>',
+					'<li><a href="#!/post/herp">Even moar title</a></li>',
 				'</ol>'].join(''))
 			t.end()
 		}, 1000)
@@ -48,14 +49,12 @@ test('post list is properly in scope in an embedded template, and the current fi
 
 		setTimeout(function () {
 			t.notOk(err)
-			t.equal(document.querySelector('#test').innerHTML, [
-				'<span class="noddity-template" data-noddity-post-file-name="file1.md" data-noddity-template-arguments="{}">',
-					'<ol>',
-						'<li><a href="#!/post/file1.md">Some title</a></li>',
-						'<li><a href="#!/post/file2.md">Another title</a></li>',
-						'<li><a href="#!/post/container">Container</a></li>',
-					'</ol>',
-				'container</span>container'].join(''))
+			t.equal(document.querySelector('body').innerHTML, [
+				'<ol>',
+					'<li><a href="#!/post/file1.md">Some title</a></li>',
+					'<li><a href="#!/post/file2.md">Another title</a></li>',
+					'<li><a href="#!/post/container">Container</a></li>',
+				'</ol>containercontainer'].join(''))
 			t.end()
 		}, 1000)
 	})
