@@ -5,11 +5,13 @@
 # example
 
 ```js
-var render = require('noddity-render-static')
+var renderDom = require('noddity-render-dom')
 var Butler = require('noddity-butler')
 var Linkifier = require('noddity-linkifier')
+var LevelJs = require('level-js')
 
-var butler = new Butler(noddityUrlString | noddityRetrieval, levelUpDb, [options])
+var db = new LevelJs('noddity-posts-db')
+var butler = new Butler('http://example.com/blogfiles/', levelUpDb)
 var linkifier = new Linkifier('#/myposts/')
 
 butler.getPost('excellent-missive.md', function(err, post) {
@@ -25,7 +27,7 @@ butler.getPost('excellent-missive.md', function(err, post) {
 		}
 	}
 
-	render(post, options)
+	renderDom(post, options)
 })
 ```
 
