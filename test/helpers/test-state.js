@@ -18,7 +18,7 @@ module.exports = function testState() {
 		staticRenderer(post, {
 			butler: butler,
 			linkifier: linkifier,
-			el: '#test',
+			el: 'body',
 			data: data
 		}, cb)
 	}
