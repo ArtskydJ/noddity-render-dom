@@ -1,88 +1,91 @@
-var render = require('noddity-renderer')
+var parseTemplate = require('noddity-template-parser')
 var Ractive = require('ractive')
 var extend = require('xtend')
-var after = require('after')
+var uuid = require('random-uuid-v4')
+var runParallel = require('run-parallel')
 Ractive.DEBUG = false
 
-var VALID_NODDITY_TEMPLATE_ELEMENT = '.noddity-template[data-noddity-post-file-name][data-noddity-template-arguments][data-noddity-partial-name]'
-var FILENAME_ATTRIBUTE = 'data-noddity-post-file-name'
-var ARGUMENTS_ATTRIBUTE = 'data-noddity-template-arguments'
-var PARTIAL_NAME_ATTRIBUTE = 'data-noddity-partial-name'
-
-/*
-options is an object like:
-{
-	linkifier,
-	butler,
-	el,
-	data
-}
-*/
-module.exports = function getRenderedPostWithTemplates(rootPost, options) {
+//MAIN
+//	- RENDER(original post)
+//	- make root ractive object with the newly created template string
+module.exports = function getRenderedPostWithTemplates(post, options) {
 	if (!options.linkifier || !options.butler || !options.el || !options.data) {
 		throw new Error('Must haz moar options!')
 	}
-	var getPost = options.butler.getPost
-
+	var renderPost = function (post) {
+		var ast = parseTemplate(post, options.linkifier)
+		return render(ast)
+	}
 	var ractive = new Ractive({
 		el: options.el,
-		template: render(rootPost, options.linkifier),
-		data: extend(options.data, rootPost.metadata)
+		template: renderPost(post).templateString, // FIXME preferably don't call renderPost 2x on `post`
+		data: extend(options.data, post.metadata)
 	})
-
-	scan(getPost, ractive)
+	var getPost = options.butler.getPost
+	scan(post, getPost, renderPost, ractive, {}, {})
 }
 
-function scan(getPost, ractive) {
-	var nodes = ractive.findAll(VALID_NODDITY_TEMPLATE_ELEMENT)
-	var filenamesToUuidsMap = getFilenameToUuidsMap(nodes)
-	var uuidToArgumentsMap = getUuidToArgumentsMap(nodes)
+// parse the original post
+// drop in the uuid partial references
+// add the uuid the the filename -> uuid and the uuid -> arguments map
+// return a template string
+function render(ast) {
+	var filenameUuidsMap = {}
+	var uuidArgumentsMap = {}
 
-	var filenamesToFetch = Object.keys(filenamesToUuidsMap).filter(filenameHasNoPartial(ractive))
+	var templateString = ast.map(function (piece) {
+		if (piece.type === 'template') {
+			var id = uuid()
+			if (!filenameUuidsMap[piece.filename]) filenameUuidsMap[piece.filename] = []
+			filenameUuidsMap[piece.filename].push(id)
+			uuidArgumentsMap[id] = piece.arguments
+			return '{{>\'' + id + '\'}}'
+		} else if (piece.type === 'string') {
+			return piece.value
+		}
+	}).join('')
 
-	if (filenamesToFetch.length > 0) {
-		var next = after(filenamesToFetch.length, function fetched(err) {
-			scan(getPost, ractive)
-		})
-
-		filenamesToFetch.forEach(function (filename) {
-			getPost(filename, function (err, post) {
-				if (!err) {
-					ractive.resetPartial(filename, post.content)
-
-					filenamesToUuidsMap[filename].forEach(function (uuid) {
-						var templateArgs = uuidToArgumentsMap[uuid]
-						var partialData = extend(post.metadata, templateArgs)
-						var context = makePartialString(filename, partialData)
-						ractive.resetPartial(uuid, context)
-					})
-				}
-				next(err)
-			})
-		})
+	return {
+		templateString: templateString,
+		filenameUuidsMap: filenameUuidsMap,
+		uuidArgumentsMap: uuidArgumentsMap
 	}
 }
 
-function getFilenameToUuidsMap(nodes) {
-	return nodes.reduce(function (map, node) {
-		var filename = node.getAttribute(FILENAME_ATTRIBUTE)
-		var uuid = node.getAttribute(PARTIAL_NAME_ATTRIBUTE)
 
-		if (!map[filename]) map[filename] = []
-		map[filename].push(uuid)
-		return map
-	}, {})
-}
+//RECURSE
+//	- for each unique file name
+//		- get that post
+//			- RENDER
+//			- set up the ractive context partial
+function scan(post, getPost, renderPost, ractive, filenameUuidsMap, uuidArgumentsMap) {
+	var rendered = renderPost(post)
+	ractive.resetPartial(post.filename, rendered.templateString)
+	filenameUuidsMap = extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap)
+	uuidArgumentsMap = extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
 
-function getUuidToArgumentsMap(nodes) {
-	return nodes.reduce(function (map, node) {
-		var uuid = node.getAttribute(PARTIAL_NAME_ATTRIBUTE)
-		var templateArgs = node.getAttribute(ARGUMENTS_ATTRIBUTE)
-		try {
-			map[uuid] = JSON.parse(templateArgs)
-		} catch (e) {}
-		return map
-	}, {})
+	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
+		var templateArgs = uuidArgumentsMap[uuid]
+		var partialData = extend(post.metadata, templateArgs)
+		var childContextPartial = makePartialString(post.filename, partialData)
+		ractive.resetPartial(uuid, childContextPartial)
+	})
+
+	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(filenameHasNoPartial(ractive))
+
+	var tasks = filenamesToFetch.map(function (filename) {
+		return function task(next) {
+			getPost(filename, function (err, childPost) {
+				if (!err) {
+					scan(childPost, getPost, renderPost, ractive, filenameUuidsMap, uuidArgumentsMap)
+				}
+				next(err)
+			})
+		}
+	})
+	runParallel(tasks, function (err) {
+		if (err) console.error(err)
+	})
 }
 
 function filenameToPartialName(partialName) {
@@ -98,4 +101,11 @@ function filenameHasNoPartial(ractive) {
 	return function (filename) {
 		return !ractive.partials[filenameToPartialName(filename)]
 	}
+}
+
+function extendMapOfArrays(map1, map2) {
+	return Object.keys(map1).concat(Object.keys(map2)).reduce(function (combined, key) {
+		combined[key] = (map1[key] || []).concat(map2[key] || [])
+		return combined
+	}, {})
 }
