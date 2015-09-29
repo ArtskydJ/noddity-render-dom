@@ -1,0 +1,49 @@
+# noddity-render-dom
+
+> Render Noddity posts to the DOM
+
+# example
+
+```js
+var render = require('noddity-render-static')
+var Butler = require('noddity-butler')
+var Linkifier = require('noddity-linkifier')
+
+var butler = new Butler(noddityUrlString | noddityRetrieval, levelUpDb, [options])
+var linkifier = new Linkifier('#/myposts/')
+
+butler.getPost('excellent-missive.md', function(err, post) {
+	var options = {
+		butler: butler,
+		linkifier: linkifier,
+		el: 'body',
+		data: {
+			config: {
+				configProperty: 'configValue'
+			},
+			arbitraryValue: 'lol'
+		}
+	}
+
+	render(post, options)
+})
+```
+
+# api
+
+```js
+var renderDom = require('noddity-render-dom')
+```
+
+## `renderDom(post, options)`
+
+- `post`: a Noddity post object returned by a Noddity Butler
+- `options`: all the other arguments
+	- `butler`: a [Noddity Butler](https://www.npmjs.com/package/noddity-butler)
+	- `linkifier`: a [Noddity Linkifier](https://www.npmjs.com/package/noddity-linkifier)
+	- `el`: a selector string of the element to which the Ractive object will be bound
+	- `data`: Any properties on the `data` object will be made available to the templates.
+
+# license
+
+[VOL](http://veryopenlicense.com)
