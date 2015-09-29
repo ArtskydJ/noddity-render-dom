@@ -14,12 +14,6 @@ module.exports = function testState() {
 	})
 	var linkifier = new Linkify('#/prefix')
 
-	if (typeof document !== 'undefined' && !document.querySelector('#test')) {
-		var ele = document.createElement('div')
-		ele.id = 'test'
-		document.body.appendChild(ele)
-	}
-
 	function render(post, data, cb) {
 		staticRenderer(post, {
 			butler: butler,
