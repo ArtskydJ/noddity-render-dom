@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "browserify test/test.js test/things-on-the-scope.js | smokestack",
-    "devtest": "wzrd test-ractive-dom.js:app.js"
+    "devtest": "wzrd test/test.js:app.js"
   },
   "repository": {
     "type": "git",
