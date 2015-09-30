@@ -7,23 +7,25 @@ Ractive.DEBUG = false
 
 module.exports = function getRenderedPostWithTemplates(post, options) {
 	if (!options.linkifier || !options.butler || !options.el || !options.data) {
-		throw new Error('Must haz moar options!')
+		throw new Error('Expected linkifier, butler, el, and data properties on options object.')
 	}
 
 	var renderPost = render.bind(null, options.linkifier)
 
 	var rendered = renderPost(post)
-	var ractive = new Ractive({
-		el: options.el,
-		data: extend(options.data, post.metadata),
-		template: rendered.templateString
+	augmentData(post, options.butler, function (err, data) {
+		var ractive = new Ractive({
+			el: options.el,
+			data: extend(data, options.data, post.metadata),
+			template: rendered.templateString
+		})
+		var util = {
+			getPost: options.butler.getPost,
+			renderPost: renderPost,
+			ractive: ractive
+		}
+		scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
 	})
-	var util = {
-		getPost: options.butler.getPost,
-		renderPost: renderPost,
-		ractive: ractive
-	}
-	scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
 }
 
 function render(linkifier, post) {
@@ -106,4 +108,23 @@ function extendMapOfArrays(map1, map2) {
 		combined[key] = (map1[key] || []).concat(map2[key] || [])
 		return combined
 	}, {})
+}
+
+function augmentData(post, butler, cb) {
+	butler.getPosts(function(err, posts) {
+		if (err) {
+			cb(err)
+		} else {
+			cb(null, {
+				postList: posts.map(function(post) {
+					return extend(post, post.metadata)
+				}),
+				posts: posts.reduce(function(posts, post) {
+					posts[post.filename] = post
+					return posts
+				}, {}),
+				current: post.filename
+			})
+		}
+	})
 }

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "browserify test/test.js test/things-on-the-scope.js | smokestack",
+    "test": "browserify test/test.js test/things-on-the-scope.js -d | smokestack",
     "devtest": "wzrd test/test.js:app.js"
   },
   "repository": {

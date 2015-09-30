@@ -19,7 +19,7 @@ test('post list is properly in scope', function(t) {
 		state.render(post, data)
 
 		setTimeout(function() {
-			t.notOk(err)
+			t.notOk(err, 'no error')
 			t.equal(document.querySelector('body').innerHTML, [
 				'<ol>',
 					'<li><a href="#!/post/file1.md">Some title</a></li>',
@@ -48,7 +48,7 @@ test('post list is properly in scope in an embedded template, and the current fi
 		state.render(post, data)
 
 		setTimeout(function () {
-			t.notOk(err)
+			t.notOk(err, 'no error')
 			t.equal(document.querySelector('body').innerHTML, [
 				'<ol>',
 					'<li><a href="#!/post/file1.md">Some title</a></li>',
