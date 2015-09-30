@@ -1,7 +1,7 @@
 var test = require('tape')
 var makeTestState = require('./helpers/test-state')
 
-test('call the callback when initially loaded', function(t) {
+test('call the callback when initially loaded', { timeout: 1000 }, function(t) {
 	var state = makeTestState()
 
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a ::file2.md:: post that I *totally* wrote')

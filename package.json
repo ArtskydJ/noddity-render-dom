@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "browserify test/basic-test.js test/things-on-the-scope.js -d | smokestack",
-    "devtest": "wzrd test/basic-test.js:app.js"
+    "test": "browserify test/all.js -d | smokestack",
+    "devtest": "wzrd test/all.js:app.js"
   },
   "repository": {
     "type": "git",
@@ -18,8 +18,8 @@
     "update",
     "ractive"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "Joseph Dykstra",
+  "license": "VOL",
   "bugs": {
     "url": "https://github.com/ArtskydJ/noddity-render-dom/issues"
   },
