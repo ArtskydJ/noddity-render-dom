@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "browserify test/all.js -d | smokestack",
+    "travis": "browserify test/all.js -d | smokestack -b firefox",
     "devtest": "wzrd test/all.js:app.js"
   },
   "repository": {

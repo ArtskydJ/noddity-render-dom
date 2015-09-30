@@ -2,6 +2,8 @@
 
 > Render Noddity posts to the DOM
 
+[![Build Status](https://travis-ci.org/ArtskydJ/noddity-render-dom.svg?branch=master)](https://travis-ci.org/ArtskydJ/noddity-render-dom)
+
 # example
 
 ```js
