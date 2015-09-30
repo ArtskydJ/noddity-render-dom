@@ -27,6 +27,7 @@
   "homepage": "https://github.com/ArtskydJ/noddity-render-dom#readme",
   "dependencies": {
     "noddity-template-parser": "^1.0.0",
+    "onetime": "^1.0.0",
     "ractive": "^0.7.3",
     "random-uuid-v4": "0.0.5",
     "run-parallel": "^1.1.4",

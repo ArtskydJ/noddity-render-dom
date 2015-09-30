@@ -39,7 +39,7 @@ butler.getPost('excellent-missive.md', function(err, post) {
 var renderDom = require('noddity-render-dom')
 ```
 
-## `renderDom(post, options)`
+## `renderDom(post, options, [cb])`
 
 - `post`: a Noddity post object returned by a Noddity Butler
 - `options`: all the other arguments
@@ -47,6 +47,9 @@ var renderDom = require('noddity-render-dom')
 	- `linkifier`: a [Noddity Linkifier](https://www.npmjs.com/package/noddity-linkifier)
 	- `el`: a selector string of the element to which the Ractive object will be bound
 	- `data`: Any properties on the `data` object will be made available to the templates.
+- `cb`: a function to be called when the first render is finished
+	- `err`: an error object or null
+	- `initialHtml`: The HTML of the initial render
 
 # license
 

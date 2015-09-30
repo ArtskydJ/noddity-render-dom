@@ -3,12 +3,14 @@ var Ractive = require('ractive')
 var extend = require('xtend')
 var uuid = require('random-uuid-v4')
 var runParallel = require('run-parallel')
+var oneTime = require('onetime')
 Ractive.DEBUG = false
 
-module.exports = function getRenderedPostWithTemplates(post, options) {
+module.exports = function getRenderedPostWithTemplates(post, options, cb) {
 	if (!options.linkifier || !options.butler || !options.el || !options.data) {
 		throw new Error('Expected linkifier, butler, el, and data properties on options object.')
 	}
+	cb = oneTime(cb || function (err) { if (err) console.error(err) })
 
 	var renderPost = render.bind(null, options.linkifier)
 
@@ -24,7 +26,7 @@ module.exports = function getRenderedPostWithTemplates(post, options) {
 			renderPost: renderPost,
 			ractive: ractive
 		}
-		scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
+		scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap, cb)
 	})
 }
 
@@ -52,7 +54,7 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
+function scan(post, util, filenameUuidsMap, uuidArgumentsMap, cb) {
 	var ractive = util.ractive
 
 	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
@@ -76,7 +78,8 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
 
 					scan(childPost, util,
 						extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap),
-						extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
+						extend(uuidArgumentsMap, rendered.uuidArgumentsMap),
+						cb
 					)
 				}
 				next(err)
@@ -84,7 +87,11 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
 		}
 	})
 	runParallel(tasks, function (err) {
-		if (err) console.error(err)
+		if (err) {
+			cb(err)
+		} else if (filenamesToFetch.length === 0) {
+			cb(null, ractive.toHTML())
+		}
 	})
 }
 

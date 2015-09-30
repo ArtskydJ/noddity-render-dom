@@ -23,12 +23,12 @@ module.exports = function TestRetrieval() {
 		setTimeout(cb.bind(null, false, index), 10)
 	}
 	this.getPost = function getPost(name, cb) {
-		process.nextTick(function() {
+		setTimeout(function() {
 			if (typeof posts[name] === 'undefined') {
 				cb("There's nothing there named " + name + ", idiot")
 			} else {
 				cb(false, posts[name])
 			}
-		})
+		}, 100)
 	}
 }
