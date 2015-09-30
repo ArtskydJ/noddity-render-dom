@@ -18,13 +18,13 @@ module.exports = function testState() {
 		document.querySelector('body').innerHTML = ''
 	}
 
-	function render(post, data) {
+	function render(post, data, cb) {
 		renderDom(post, {
 			butler: butler,
 			linkifier: linkifier,
 			el: 'body',
 			data: data
-		})
+		}, cb)
 	}
 
 	return {
