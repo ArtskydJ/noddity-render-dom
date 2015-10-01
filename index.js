@@ -41,7 +41,7 @@ function render(linkifier, post) {
 			if (!filenameUuidsMap[piece.filename]) filenameUuidsMap[piece.filename] = []
 			filenameUuidsMap[piece.filename].push(id)
 			uuidArgumentsMap[id] = piece.arguments
-			return '{{>' + id + '}}'
+			return makePartialString(id)
 		} else if (piece.type === 'string') {
 			return piece.value
 		}
@@ -59,10 +59,10 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, cb) {
 
 	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
 		var templateArgs = uuidArgumentsMap[uuid]
-		var partialName = filenameToPartialName(post.filename)
 		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
-		var childContextPartial = makePartialString(partialName, partialData)
-		ractive.resetPartial(uuid, childContextPartial)
+		var childContextPartial = makePartialString(post.filename, partialData)
+		var partialName = normalizePartialName(uuid)
+		ractive.resetPartial(partialName, childContextPartial)
 	})
 
 	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(filenameHasNoPartial(ractive))
@@ -73,7 +73,7 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, cb) {
 				if (!err) {
 					var rendered = util.renderPost(childPost)
 
-					var partialName = filenameToPartialName(childPost.filename)
+					var partialName = normalizePartialName(childPost.filename)
 					ractive.resetPartial(partialName, rendered.templateString)
 
 					scan(childPost, util,
@@ -95,18 +95,19 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, cb) {
 	})
 }
 
-function filenameToPartialName(partialName) {
-	return partialName.replace(/\./g, '_')
+function normalizePartialName(partialName) {
+	return '_' + partialName.replace(/\./g, '_')
 }
 
 function makePartialString(partialName, partialContext) {
-	partialContext = JSON.stringify(partialContext) || ''
-	return '{{>' + partialName + ' ' + partialContext + '}}'
+	partialName = normalizePartialName(partialName)
+	partialContext = (partialContext ? ' ' + JSON.stringify(partialContext) : '')
+	return '{{>' + partialName + partialContext + '}}'
 }
 
 function filenameHasNoPartial(ractive) {
 	return function (filename) {
-		return !ractive.partials[filenameToPartialName(filename)]
+		return !ractive.partials[normalizePartialName(filename)]
 	}
 }
 
