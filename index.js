@@ -37,7 +37,7 @@ function render(linkifier, post) {
 	var ast = parseTemplate(post, linkifier)
 	var templateString = ast.map(function (piece) {
 		if (piece.type === 'template') {
-			var id = '_' + uuid()
+			var id = uuid()
 			if (!filenameUuidsMap[piece.filename]) filenameUuidsMap[piece.filename] = []
 			filenameUuidsMap[piece.filename].push(id)
 			uuidArgumentsMap[id] = piece.arguments
