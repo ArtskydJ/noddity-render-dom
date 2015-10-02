@@ -16,20 +16,22 @@ var db = new LevelJs('noddity-posts-db')
 var butler = new Butler('http://example.com/blogfiles/', levelUpDb)
 var linkifier = new Linkifier('#/myposts/')
 
-butler.getPost('excellent-missive.md', function(err, post) {
-	var options = {
-		butler: butler,
-		linkifier: linkifier,
-		el: 'body',
-		data: {
-			config: {
-				configProperty: 'configValue'
-			},
-			arbitraryValue: 'lol'
-		}
+var options = {
+	butler: butler,
+	linkifier: linkifier,
+	el: 'body',
+	data: {
+		config: {
+			configProperty: 'configValue'
+		},
+		arbitraryValue: 'lol'
 	}
+}
 
-	renderDom(post, options)
+renderDom('post-template.html', options, function (err, setCurrent) {
+	setCurrent('my-awesome-post.md', function (err) {
+		if (err) throw err // 404
+	})
 })
 ```
 
@@ -39,17 +41,35 @@ butler.getPost('excellent-missive.md', function(err, post) {
 var renderDom = require('noddity-render-dom')
 ```
 
-## `renderDom(post, options, [cb])`
+## `renderDom(post, options, cb)`
 
-- `post`: a Noddity post object returned by a Noddity Butler
+- `post`: a Noddity post object or a post filename
 - `options`: all the other arguments
 	- `butler`: a [Noddity Butler](https://www.npmjs.com/package/noddity-butler)
 	- `linkifier`: a [Noddity Linkifier](https://www.npmjs.com/package/noddity-linkifier)
 	- `el`: a selector string of the element to which the Ractive object will be bound
 	- `data`: Any properties on the `data` object will be made available to the templates.
-- `cb`: a function to be called when the first render is finished
-	- `err`: an error object or null
-	- `initialHtml`: The HTML of the initial render
+- `cb(err, setCurrent)`: a function to be called when the first render is finished.
+
+## `setCurrent(post, [cb])`
+
+`setCurrent` is a function/event emitter.
+
+Call the function to change the current post to a different post.
+
+- `post`: a Noddity post object, or a post filename
+- `cb(err)`: an optional function that is called when the current post is set or a fatal error occurs
+
+### events
+
+- `error(err)` is emitted on non-fatal errors, e.g. an embedded template not loading
+	- `err` is an Error object
+
+```js
+setCurrent.on('error', function (err) {
+	console.error(err)
+})
+```
 
 # license
 

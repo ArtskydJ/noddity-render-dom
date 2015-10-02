@@ -4,36 +4,63 @@ var extend = require('xtend')
 var uuid = require('random-uuid-v4')
 var runParallel = require('run-parallel')
 var oneTime = require('onetime')
+var EventEmitter = require('events').EventEmitter
 Ractive.DEBUG = false
 
 module.exports = function getRenderedPostWithTemplates(post, options, cb) {
-	if (!options.linkifier || !options.butler || !options.el || !options.data) {
-		throw new Error('Expected linkifier, butler, el, and data properties on options object.')
+	if (!options || !options.linkifier || !options.butler || !options.data) {
+		throw new Error('Expected linkifier, butler, and data properties on options object.')
 	}
-	cb = oneTime(cb || function (err) { if (err) console.error(err) })
-
+	var butler = options.butler
+	cb = oneTime(cb)
 	var renderPost = render.bind(null, options.linkifier)
 
-	var rendered = renderPost(post)
-	augmentData(post, options.butler, function (err, data) {
+	if (typeof post === 'string') {
+		butler.getPost(post, function (err, fetchedPost) {
+			if (err) return cb(err)
+			initialize(fetchedPost)
+		})
+	} else {
+		initialize(post)
+	}
+
+	function initialize(rootPost) {
+		var rendered = renderPost(rootPost)
+
 		var ractive = new Ractive({
 			el: options.el,
-			data: extend(data, options.data, post.metadata),
+			data: extend(options.data || {}, rootPost.metadata),
 			template: rendered.templateString
 		})
-		var util = {
-			getPost: options.butler.getPost,
-			renderPost: renderPost,
-			ractive: ractive
+
+		augmentData(rootPost, butler, function (err, data) {
+			if (err) return cb(err)
+
+			ractive.set(data)
+		})
+
+		function setCurrent(post, onLoadCb) {
+			var util = {
+				getPost: butler.getPost,
+				renderPost: renderPost,
+				ractive: ractive
+			}
+			ractive.resetPartial('current', makePartialString(post.filename))
+			scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap, function () {})
+			setTimeout(onLoadCb, 500, null)
 		}
-		scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap, cb)
-	})
+
+		makeEmitter(setCurrent)
+		setCurrent.ractive = ractive
+
+		cb(null, setCurrent)
+	}
 }
 
 function render(linkifier, post) {
 	var filenameUuidsMap = {}
 	var uuidArgumentsMap = {}
-
+	console.log('render', post.filename)
 	var ast = parseTemplate(post, linkifier)
 	var templateString = ast.map(function (piece) {
 		if (piece.type === 'template') {
@@ -54,7 +81,7 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap, cb) {
+function scan(post, util, filenameUuidsMap, uuidArgumentsMap, onLoadCb) {
 	var ractive = util.ractive
 
 	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
@@ -78,21 +105,14 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, cb) {
 
 					scan(childPost, util,
 						extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap),
-						extend(uuidArgumentsMap, rendered.uuidArgumentsMap),
-						cb
+						extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
 					)
 				}
 				next(err)
 			})
 		}
 	})
-	runParallel(tasks, function (err) {
-		if (err) {
-			cb(err)
-		} else if (filenamesToFetch.length === 0) {
-			cb(null, ractive.toHTML())
-		}
-	})
+	runParallel(tasks, onLoadCb)
 }
 
 function normalizePartialName(partialName) {
@@ -134,5 +154,14 @@ function augmentData(post, butler, cb) {
 				current: post.filename
 			})
 		}
+	})
+}
+
+function makeEmitter(fn) {
+	var emitter = new EventEmitter()
+	Object.keys(EventEmitter.prototype).filter(function(key) {
+		return typeof EventEmitter.prototype[key] === 'function'
+	}).forEach(function(key) {
+		fn[key] = EventEmitter.prototype[key].bind(emitter)
 	})
 }

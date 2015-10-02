@@ -14,15 +14,11 @@ module.exports = function testState() {
 	})
 	var linkifier = new Linkify('#/prefix')
 
-	if (typeof document !== 'undefined') {
-		document.querySelector('body').innerHTML = ''
-	}
-
-	function render(post, data, cb) {
-		renderDom(post, {
+	function render(rootPost, data, cb) {
+		if (!rootPost) throw new Error('No root post!')
+		renderDom(rootPost, {
 			butler: butler,
 			linkifier: linkifier,
-			el: 'body',
 			data: data
 		}, cb)
 	}
