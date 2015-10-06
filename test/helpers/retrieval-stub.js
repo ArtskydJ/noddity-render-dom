@@ -12,7 +12,7 @@ module.exports = function TestRetrieval() {
 		this.removeFromIndex(name)
 	}
 	this.addPost = function addPost(name, metadata, content) {
-		index.push(name)
+		if (index.indexOf(name) === -1) index.push(name)
 		posts[name] = {
 			metadata: metadata,
 			content: content,
