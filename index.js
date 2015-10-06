@@ -26,7 +26,7 @@ module.exports = function renderDom(post, options, cb) {
 			data: extend(options.data || {}, rootPost.metadata),
 			template: rendered.templateString
 		})
-		ractive.resetPartial('current', '')
+		ractive.resetPartial('current', '') // required until https://github.com/ractivejs/ractive/pull/2187
 
 		augmentData(rootPost, butler, function (err, data) {
 			if (err) return cb(err)
@@ -113,13 +113,13 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, onLoadCb) {
 }
 
 function normalizePartialName(partialName) {
-	return '_' + partialName.replace(/\./g, '_')
+	return partialName.replace(/\./g, '_')
 }
 
 function makePartialString(partialName, partialContext) {
 	partialName = normalizePartialName(partialName)
-	partialContext = (partialContext ? ' ' + JSON.stringify(partialContext) : '')
-	return '{{>' + partialName + partialContext + '}}'
+	partialContext = (partialContext ? JSON.stringify(partialContext) : '')
+	return '{{>\'' + partialName + '\' ' + partialContext + '}}'
 }
 
 function filenameHasNoPartial(ractive) {
