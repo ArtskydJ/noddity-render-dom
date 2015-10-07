@@ -28,7 +28,6 @@
     "onetime": "^1.0.0",
     "ractive": "^0.7.3",
     "random-uuid-v4": "0.0.5",
-    "run-parallel": "^1.1.4",
     "xtend": "^4.0.0"
   },
   "devDependencies": {
