@@ -1,7 +1,7 @@
 {
   "name": "noddity-render-dom",
   "version": "",
-  "description": "",
+  "description": "Render Noddity posts to the DOM",
   "main": "index.js",
   "scripts": {
     "test": "tape test/*.js"
