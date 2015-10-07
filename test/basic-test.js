@@ -22,7 +22,7 @@ test('embedded templates', function(t) {
 					setTimeout(function () {
 						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lookit huh</p> post that I <em>totally</em> wrote</p>')
 						t.end()
-					}, 10)
+					}, 20)
 				})
 			})
 		})
