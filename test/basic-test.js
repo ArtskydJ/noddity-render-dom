@@ -4,6 +4,7 @@ var makeTestState = require('./helpers/test-state')
 
 test('embedded templates', function(t) {
 	var state = makeTestState()
+	t.plan(5)
 
 	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a ::file2.md:: post that I *totally* wrote')
@@ -21,15 +22,16 @@ test('embedded templates', function(t) {
 					setTimeout(function () {
 						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lookit huh</p> post that I <em>totally</em> wrote</p>')
 						t.end()
-					}, 1000)
+					}, 10)
 				})
 			})
 		})
 	})
 })
-/*
+
 test('three markdown files deep', function(t) {
 	var state = makeTestState()
+	t.plan(5)
 
 	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a ::file2.md:: post that I *totally* wrote')
@@ -47,7 +49,7 @@ test('three markdown files deep', function(t) {
 					setTimeout(function() {
 						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah <p>lookit wat</p> <p>lookit huh</p></p> post that I <em>totally</em> wrote</p>')
 						t.end()
-					}, 1000)
+					}, 10)
 				})
 			})
 		})
@@ -56,6 +58,7 @@ test('three markdown files deep', function(t) {
 
 test('filename starting with a number', function(t) {
 	var state = makeTestState()
+	t.plan(5)
 
 	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a ::2.md:: post that I *totally* wrote')
@@ -71,10 +74,29 @@ test('filename starting with a number', function(t) {
 					setTimeout(function() {
 						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
 						t.end()
-					}, 1000)
+					}, 10)
 				})
 			})
 		})
 	})
 })
-*/
+
+test('render by filename instead of post objects', function(t) {
+	var state = makeTestState()
+	t.plan(3)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
+	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a ::2.md:: post that I *totally* wrote')
+	state.retrieval.addPost('2.md', { title: 'Some title', date: new Date() }, 'lol yeah')
+	state.render('post', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent('file1.md', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function() {
+				t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+				t.end()
+			}, 10)
+		})
+	})
+})

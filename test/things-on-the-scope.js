@@ -4,6 +4,7 @@ var makeTestState = require('./helpers/test-state')
 
 test('post list is properly in scope', function(t) {
 	var state = makeTestState()
+	t.plan(5)
 
 	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date(1442361866264) }, ['<ol>{{#postList}}',
@@ -32,7 +33,7 @@ test('post list is properly in scope', function(t) {
 								'<li><a href="#!/post/herp">Even moar title</a></li>',
 							'</ol>'].join(''))
 						t.end()
-					}, 1000)
+					}, 10)
 				})
 			})
 		})
@@ -41,6 +42,7 @@ test('post list is properly in scope', function(t) {
 
 test('post list is properly in scope in an embedded template, and the current filename is set at top and embedded levels', function(t) {
 	var state = makeTestState()
+	t.plan(5)
 
 	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date(1442361866264) }, ['<ol>{{#postList}}',
@@ -69,7 +71,7 @@ test('post list is properly in scope in an embedded template, and the current fi
 								'<li><a href="#!/post/container">Container</a></li>',
 							'</ol>containercontainer'].join(''))
 						t.end()
-					}, 1000)
+					}, 10)
 				})
 			})
 		})

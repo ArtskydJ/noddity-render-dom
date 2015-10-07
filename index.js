@@ -2,12 +2,11 @@ var parseTemplate = require('noddity-template-parser')
 var Ractive = require('ractive')
 var extend = require('xtend')
 var uuid = require('random-uuid-v4')
-var runParallel = require('run-parallel')
 var oneTime = require('onetime')
 var EventEmitter = require('events').EventEmitter
 Ractive.DEBUG = false
 
-module.exports = function renderDom(post, options, cb) {
+module.exports = function renderDom(rootPostOrString, options, cb) {
 	if (!options || !options.linkifier || !options.butler || !options.data) {
 		throw new Error('Expected linkifier, butler, and data properties on options object.')
 	}
@@ -15,7 +14,7 @@ module.exports = function renderDom(post, options, cb) {
 	cb = oneTime(cb)
 	var renderPost = render.bind(null, options.linkifier)
 
-	postOrString(post, butler, initialize)
+	postOrString(rootPostOrString, butler, initialize)
 
 	function initialize(err, rootPost) {
 		if (err) return cb(err)
@@ -23,12 +22,12 @@ module.exports = function renderDom(post, options, cb) {
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: extend(options.data || {}, rootPost.metadata),
+			data: extend(options.data || {}),
 			template: rendered.templateString
 		})
 		ractive.resetPartial('current', '') // required until https://github.com/ractivejs/ractive/pull/2187
 
-		augmentData(rootPost, butler, function (err, data) {
+		augmentRootData(rootPost, butler, function (err, data) {
 			if (err) return cb(err)
 
 			ractive.set(data)
@@ -36,22 +35,25 @@ module.exports = function renderDom(post, options, cb) {
 			cb(null, setCurrent)
 		})
 
-		function setCurrent(post, onLoadCb) {
-			if (typeof post === 'string') throw new Error('TODO') // postOrString(post, butler, cb)
-			var util = {
-				getPost: butler.getPost,
-				renderPost: renderPost,
-				ractive: ractive
-			}
-			var partialString = makePartialString(post.filename)
-			ractive.resetPartial('current', partialString)
-			scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap, function () {})
-			setTimeout(onLoadCb, 500, null)
+		function setCurrent(currentPostOrString, onLoadCb) {
+			postOrString(currentPostOrString, butler, function (err, currPost) {
+				if (err) return onLoadCb(err)
+				var util = {
+					getPost: butler.getPost,
+					renderPost: renderPost,
+					setCurrent: setCurrent,
+					ractive: ractive
+				}
+				var partialString = makePartialString(currPost.filename)
+				ractive.resetPartial('current', partialString)
+				scan(currPost, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
+
+				onLoadCb(null)
+			})
 		}
 
 		makeEmitter(setCurrent)
 		setCurrent.ractive = ractive
-
 	}
 }
 
@@ -78,7 +80,7 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap, onLoadCb) {
+function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
 	var ractive = util.ractive
 
 	var rendered = util.renderPost(post)
@@ -99,17 +101,15 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, onLoadCb) {
 
 	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(filenameHasNoPartial(ractive))
 
-	var tasks = filenamesToFetch.map(function (filename) {
-		return function task(next) {
-			util.getPost(filename, function (err, childPost) {
-				if (!err) {
-					scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
-				}
-				next(err)
-			})
-		}
+	filenamesToFetch.forEach(function (filename) {
+		util.getPost(filename, function (err, childPost) {
+			if (err) {
+				util.setCurrent.emit('error', err)
+			} else {
+				scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
+			}
+		})
 	})
-	runParallel(tasks, onLoadCb)
 }
 
 function normalizePartialName(partialName) {
@@ -139,27 +139,35 @@ function postOrString(post, butler, cb) {
 	if (typeof post === 'string') {
 		butler.getPost(post, cb)
 	} else {
-		cb(null, post)
+		process.nextTick(function () {
+			cb(null, post)
+		})
 	}
 }
 
-function augmentData(post, butler, cb) {
+function augmentRootData(post, butler, cb) {
 	butler.getPosts(function(err, posts) {
 		if (err) {
 			cb(err)
 		} else {
-			cb(null, {
-				postList: posts.map(function(post) {
+			cb(null, extend(post.metadata, {
+				postList: posts.filter(function(post) {
+					return post.metadata.date
+				}).map(function(post) {
 					return extend(post, post.metadata)
 				}),
 				posts: posts.reduce(function(posts, post) {
-					posts[post.filename] = post
+					posts[removeDots(post.filename)] = post
 					return posts
 				}, {}),
 				current: post.filename
-			})
+			}))
 		}
 	})
+}
+
+function removeDots(str) {
+	return str.replace(/\./g, '')
 }
 
 function makeEmitter(fn) {
