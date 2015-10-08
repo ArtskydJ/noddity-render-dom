@@ -14,9 +14,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 	cb = oneTime(cb)
 	var renderPost = render.bind(null, options.linkifier)
 
-	postOrString(rootPostOrString, butler, initialize)
-
-	function initialize(err, rootPost) {
+	postOrString(rootPostOrString, butler, function (err, rootPost) {
 		if (err) return cb(err)
 		var rendered = renderPost(rootPost)
 
@@ -38,23 +36,31 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		function setCurrent(currentPostOrString, onLoadCb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
-				var util = {
-					getPost: butler.getPost,
-					renderPost: renderPost,
-					setCurrent: setCurrent,
-					ractive: ractive
-				}
+
 				var partialString = makePartialString(currPost.filename)
 				ractive.resetPartial('current', partialString)
 				scan(currPost, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
 
 				onLoadCb(null)
 			})
+			butler.on('post changed', function (filename, post) {
+				console.log('\n\nPOST CHANGED\n\n')
+				scan(post, util, {}, {})
+			})
 		}
 
 		makeEmitter(setCurrent)
 		setCurrent.ractive = ractive
-	}
+
+		var util = {
+			getPost: butler.getPost,
+			renderPost: renderPost,
+			emit: setCurrent.emit.bind(setCurrent),
+			ractive: ractive
+		}
+
+
+	})
 }
 
 function render(linkifier, post) {
@@ -104,7 +110,8 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
 	filenamesToFetch.forEach(function (filename) {
 		util.getPost(filename, function (err, childPost) {
 			if (err) {
-				util.setCurrent.emit('error', err)
+				console.log('\n\nERROR\n\n')
+				util.emit('error', err)
 			} else {
 				scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
 			}
