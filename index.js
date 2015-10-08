@@ -7,8 +7,8 @@ var EventEmitter = require('events').EventEmitter
 Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
-	if (!options || !options.linkifier || !options.butler || !options.data) {
-		throw new Error('Expected linkifier, butler, and data properties on options object.')
+	if (!options || !options.linkifier || !options.butler) {
+		throw new Error('Expected linkifier and butler properties on options object.')
 	}
 	var butler = options.butler
 	cb = oneTime(cb)

@@ -47,8 +47,8 @@ var renderDom = require('noddity-render-dom')
 - `options`: all the other arguments
 	- `butler`: a [Noddity Butler](https://www.npmjs.com/package/noddity-butler)
 	- `linkifier`: a [Noddity Linkifier](https://www.npmjs.com/package/noddity-linkifier)
-	- `el`: a selector string of the element to which the Ractive object will be bound
-	- `data`: Any properties on the `data` object will be made available to the templates.
+	- `el`: a selector string of the element to which the Ractive object will be bound. *Optional*
+	- `data`: Any properties on the `data` object will be made available to the templates. *Optional*
 - `cb(err, setCurrent)`: a function to be called when the first render is finished.
 
 ## `setCurrent(post, [cb])`
