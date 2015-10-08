@@ -27,8 +27,10 @@ test('contents update when the post changes', function(t) {
 							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz</p> post that I <em>totally</em> wrote</p>')
 
 							t.end()
-						}, 10)
-					}, 10)
+						}, 1000)
+
+						setCurrent.on('error', t.fail.bind(t, 'error event'))
+					}, 500)
 				})
 			})
 		})
