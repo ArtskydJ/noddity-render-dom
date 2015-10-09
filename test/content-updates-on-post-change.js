@@ -22,10 +22,10 @@ test('contents update when the post changes', function(t) {
 					setTimeout(function () {
 						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lookit huh</p> post that I <em>totally</em> wrote</p>')
 
-						state.retrieval.addPost('new', { title: 'Some title', date: new Date(), markdown: false }, 'new')
-						state.retrieval.addPost('file2.md', { title: 'Some title', date: new Date(), lol: 'lolz' }, 'lol yeah ::herp|wat:: {{lol}} ::new::')
+						state.retrieval.addPost('new', { title: 'Some title', date: new Date(), markdown: false, key: 'val' }, 'new {{key}} {{1}}')
+						state.retrieval.addPost('file2.md', { title: 'Some title', date: new Date(), lol: 'lolz' }, 'lol yeah ::herp|wat:: {{lol}} ::new|arg::')
 						setTimeout(function () {
-							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz new</p> post that I <em>totally</em> wrote</p>')
+							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz new val arg</p> post that I <em>totally</em> wrote</p>')
 
 							//console.log(require('util').inspect(setCurrent.ractive.partials, { depth: null }))
 							t.end()
