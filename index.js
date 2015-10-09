@@ -43,7 +43,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 				onLoadCb(null)
 			})
-			ensureListener()
+			global.DEBUG = true // lol
 		}
 
 		makeEmitter(setCurrent)
@@ -55,16 +55,14 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			emit: setCurrent.emit.bind(setCurrent),
 			ractive: ractive
 		}
-		var ensureListener = oneTime(function () {
-			butler.on('post changed', function (filename, post) {
-				console.log('\n\nPOST CHANGED', rendered.filenameUuidsMap, rendered.uuidArgumentsMap, '\n\n')
-				//scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
-				console.log('post.metadata ____FIRST____', post.metadata)
-				scan(post, util, {}, {}, true)
-			})
-			global.DEBUG = true // lol
-		})
 
+		butler.on('post changed', function (filename, post) {
+			if (!filenameHasNoPartial(ractive)(filename)) { // only scan for posts that are in the system
+				console.log('\n\nPOST CHANGED', filename, '\n\n')
+				//scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
+				scan(post, util, {}, {}, true)
+			}
+		})
 	})
 }
 
@@ -92,45 +90,53 @@ function render(linkifier, post) {
 }
 
 function scan(post, util, filenameUuidsMap, uuidArgumentsMap, fetchAll) {
+	if (global.DEBUG) console.log('scan', post.filename, post.metadata)
 	var ractive = util.ractive
 
 	var rendered = util.renderPost(post)
 
-	if (global.DEBUG) console.log('scan', post.filename)
 	var partialName = normalizePartialName(post.filename)
 	ractive.resetPartial(partialName, rendered.templateString)
 
+	console.log('---rendered.filenameUuidsMap', rendered.filenameUuidsMap)
+
 	filenameUuidsMap = extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap)
 	uuidArgumentsMap = extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
-	if (global.DEBUG && false) {
-		console.log('filenameUuidsMap', filenameUuidsMap)
-		console.log('uuidArgumentsMap', uuidArgumentsMap)
+	if (global.DEBUG) {
+		console.log(' filenameUuidsMap', filenameUuidsMap)
+		console.log(' uuidArgumentsMap', uuidArgumentsMap)
 	}
 
-	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
-		var templateArgs = uuidArgumentsMap[uuid]
-		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
-		if (global.DEBUG) {
-			console.log('post.metadata AGAIN', post.metadata)
-			console.log('partialData', partialData)
-		}
-		var childContextPartial = makePartialString(post.filename, partialData)
-		var partialName = normalizePartialName(uuid)
-		ractive.resetPartial(partialName, childContextPartial)
-	})
+	createEmbeddedContexts(post, ractive, filenameUuidsMap, uuidArgumentsMap)
 
 	var filenamesToFetch = Object.keys(filenameUuidsMap)
+	console.log(' filename list', filenamesToFetch)
 	if (!fetchAll) filenamesToFetch = filenamesToFetch.filter(filenameHasNoPartial(ractive))
+	console.log(' fetch these', filenamesToFetch)
 
 	filenamesToFetch.forEach(function (filename) {
 		util.getPost(filename, function (err, childPost) {
 			if (err) {
-				console.log('\n\nERROR\n\n')
 				util.emit('error', err)
 			} else {
 				scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
 			}
 		})
+	})
+}
+
+function createEmbeddedContexts(post, ractive, filenameUuidsMap, uuidArgumentsMap) {
+	console.log('creating context for', post.filename)
+	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
+		var templateArgs = uuidArgumentsMap[uuid]
+		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
+		if (global.DEBUG) {
+			console.log('post.metadata 3', post.filename, post.metadata)
+			console.log('\npartialData', partialData)
+		}
+		var childContextPartial = makePartialString(post.filename, partialData)
+		var partialName = normalizePartialName(uuid)
+		ractive.resetPartial(partialName, childContextPartial)
 	})
 }
 
