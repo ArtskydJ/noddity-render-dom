@@ -40,6 +40,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 				onPostChange(null, currPost)
 				onLoadCb(null)
 			})
+			addListenerIfNotAddedYet()
 		}
 
 		makeEmitter(setCurrent)
@@ -52,7 +53,9 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			ractive: ractive
 		})
 
-		butler.on('post changed', onPostChange)
+		var addListenerIfNotAddedYet = oneTime(function () {
+			butler.on('post changed', onPostChange)
+		})
 	})
 }
 

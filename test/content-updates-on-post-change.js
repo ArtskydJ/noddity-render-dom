@@ -26,8 +26,9 @@ test('contents update when the post changes', function(t) {
 						setTimeout(function () {
 							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz</p> post that I <em>totally</em> wrote</p>')
 
+							//console.log(require('util').inspect(setCurrent.ractive.partials, { depth: null }))
 							t.end()
-						}, 1000)
+						}, 3000)
 
 						setCurrent.on('error', t.fail.bind(t, 'error event'))
 					}, 500)

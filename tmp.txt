@@ -1,0 +1,19 @@
+root              blah blah TODO blah blah FIXME blah blah blah blah blah
+TODO              blah blah blah blah blah FIXME blah blah HACK
+FIXME             blah blah blah blah blah blah  blah blah HACK
+HACK              blah blah
+*******************************************************************************
+root              blah blah UUID_T1 blah blah UUID_F1 blah blah blah blah blah
+UUID_F1->FIXME
+UUID_T1->TODO
+TODO              blah blah blah blah blah UUID_F2 blah blah UUID_H1
+UUID_F2->FIXME
+UUID_H1->HACK
+FIXME             blah blah blah blah blah blah blah blah UUID_H2
+UUID_H2->HACK
+HACK              blah blah
+*******************************************************************************
+FIXME change      blah blah HACK
+*******************************************************************************
+resetPartial(FIXME, rendered)
+render children with new uuids

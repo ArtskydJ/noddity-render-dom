@@ -49,7 +49,7 @@ test('three markdown files deep', function(t) {
 					setTimeout(function() {
 						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah <p>lookit wat</p> <p>lookit huh</p></p> post that I <em>totally</em> wrote</p>')
 						t.end()
-					}, 10)
+					}, 100)
 				})
 			})
 		})

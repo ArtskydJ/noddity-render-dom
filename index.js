@@ -43,10 +43,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 				onLoadCb(null)
 			})
-			butler.on('post changed', function (filename, post) {
-				console.log('\n\nPOST CHANGED\n\n')
-				scan(post, util, {}, {})
-			})
+			ensureListener()
 		}
 
 		makeEmitter(setCurrent)
@@ -58,7 +55,15 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			emit: setCurrent.emit.bind(setCurrent),
 			ractive: ractive
 		}
-
+		var ensureListener = oneTime(function () {
+			butler.on('post changed', function (filename, post) {
+				console.log('\n\nPOST CHANGED', rendered.filenameUuidsMap, rendered.uuidArgumentsMap, '\n\n')
+				//scan(post, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
+				console.log('post.metadata ____FIRST____', post.metadata)
+				scan(post, util, {}, {}, true)
+			})
+			global.DEBUG = true // lol
+		})
 
 	})
 }
@@ -86,26 +91,36 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
+function scan(post, util, filenameUuidsMap, uuidArgumentsMap, fetchAll) {
 	var ractive = util.ractive
 
 	var rendered = util.renderPost(post)
 
+	if (global.DEBUG) console.log('scan', post.filename)
 	var partialName = normalizePartialName(post.filename)
 	ractive.resetPartial(partialName, rendered.templateString)
 
 	filenameUuidsMap = extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap)
 	uuidArgumentsMap = extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
+	if (global.DEBUG && false) {
+		console.log('filenameUuidsMap', filenameUuidsMap)
+		console.log('uuidArgumentsMap', uuidArgumentsMap)
+	}
 
 	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
 		var templateArgs = uuidArgumentsMap[uuid]
 		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
+		if (global.DEBUG) {
+			console.log('post.metadata AGAIN', post.metadata)
+			console.log('partialData', partialData)
+		}
 		var childContextPartial = makePartialString(post.filename, partialData)
 		var partialName = normalizePartialName(uuid)
 		ractive.resetPartial(partialName, childContextPartial)
 	})
 
-	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(filenameHasNoPartial(ractive))
+	var filenamesToFetch = Object.keys(filenameUuidsMap)
+	if (!fetchAll) filenamesToFetch = filenamesToFetch.filter(filenameHasNoPartial(ractive))
 
 	filenamesToFetch.forEach(function (filename) {
 		util.getPost(filename, function (err, childPost) {
