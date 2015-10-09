@@ -15,5 +15,6 @@ HACK              blah blah
 *******************************************************************************
 FIXME change      blah blah HACK
 *******************************************************************************
+delete all partials included by current FIXME's     (later version)
 resetPartial(FIXME, rendered)
 render children with new uuids
