@@ -23,7 +23,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			data: extend(options.data || {}),
 			template: rendered.templateString
 		})
-		ractive.resetPartial('current', '') // required until https://github.com/ractivejs/ractive/pull/2187
+		ractive.resetPartial('current', '')
 
 		augmentRootData(rootPost, butler, function (err, data) {
 			if (err) return cb(err)
@@ -88,7 +88,7 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap, fetchAll) {
+function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
 	if (global.DEBUG) console.log('scan', post.filename, post.metadata)
 	var ractive = util.ractive
 
@@ -108,7 +108,9 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, fetchAll) {
 
 	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(function (filename) {
 		// Keep the newly found filenames, and keep the non-existent filenames
-		return (fetchAll && rendered.filenameUuidsMap[filename]) || !partialExists(ractive, filename)
+		var fileInThisPost = !!rendered.filenameUuidsMap[filename]
+		var fileIsNotAround = !partialExists(ractive, filename)
+		return (thisPostChanged && fileInThisPost) || fileIsNotAround
 	})
 	console.log(' fetch these', filenamesToFetch)
 
