@@ -1,9 +1,11 @@
 var parseTemplate = require('noddity-template-parser')
 var Ractive = require('ractive')
 var extend = require('xtend')
+var extendMutate = require('xtend/mutable')
 var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
-var EventEmitter = require('events').EventEmitter
+var makeEmitter = require('make-object-an-emitter')
+var parallel = require('run-parallel')
 Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
@@ -14,9 +16,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 	cb = oneTime(cb)
 	var renderPost = render.bind(null, options.linkifier)
 
-	postOrString(rootPostOrString, butler, initialize)
-
-	function initialize(err, rootPost) {
+	postOrString(rootPostOrString, butler, function (err, rootPost) {
 		if (err) return cb(err)
 		var rendered = renderPost(rootPost)
 
@@ -25,7 +25,11 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			data: extend(options.data || {}),
 			template: rendered.templateString
 		})
-		ractive.resetPartial('current', '') // required until https://github.com/ractivejs/ractive/pull/2187
+		var glbl = {
+			filenameUuidsMap: rendered.filenameUuidsMap,
+			uuidArgumentsMap: rendered.uuidArgumentsMap
+		}
+		ractive.resetPartial('current', '')
 
 		augmentRootData(rootPost, butler, function (err, data) {
 			if (err) return cb(err)
@@ -38,15 +42,10 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		function setCurrent(currentPostOrString, onLoadCb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
-				var util = {
-					getPost: butler.getPost,
-					renderPost: renderPost,
-					setCurrent: setCurrent,
-					ractive: ractive
-				}
+
 				var partialString = makePartialString(currPost.filename)
 				ractive.resetPartial('current', partialString)
-				scan(currPost, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
+				scan(currPost, util, glbl.filenameUuidsMap, glbl.uuidArgumentsMap)
 
 				onLoadCb(null)
 			})
@@ -54,7 +53,20 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		makeEmitter(setCurrent)
 		setCurrent.ractive = ractive
-	}
+
+		var util = {
+			getPost: butler.getPost,
+			renderPost: renderPost,
+			emit: setCurrent.emit.bind(setCurrent),
+			ractive: ractive
+		}
+
+		butler.on('post changed', function (filename, post) {
+			if (partialExists(ractive, filename)) { // only scan for posts that are in the system
+				scan(post, util, glbl.filenameUuidsMap, glbl.uuidArgumentsMap, true)
+			}
+		})
+	})
 }
 
 function render(linkifier, post) {
@@ -80,18 +92,21 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
+function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
 	var ractive = util.ractive
-
 	var rendered = util.renderPost(post)
 
 	var partialName = normalizePartialName(post.filename)
 	ractive.resetPartial(partialName, rendered.templateString)
 
-	filenameUuidsMap = extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap)
-	uuidArgumentsMap = extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
+	extendMapOfArraysMutate(filenameUuidsMap, rendered.filenameUuidsMap)
+	extendMutate(uuidArgumentsMap, rendered.uuidArgumentsMap)
 
-	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
+	// Create embedded contexts
+	;(filenameUuidsMap[post.filename] || []).filter(function (uuid) {
+		var contextDoesNotExist = !partialExists(ractive, uuid)
+		return thisPostChanged || contextDoesNotExist
+	}).forEach(function (uuid) {
 		var templateArgs = uuidArgumentsMap[uuid]
 		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
 		var childContextPartial = makePartialString(post.filename, partialData)
@@ -99,15 +114,29 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap) {
 		ractive.resetPartial(partialName, childContextPartial)
 	})
 
-	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(filenameHasNoPartial(ractive))
+	// Fetch any files that were found
+	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(function (filename) {
+		var fileInThisPost = !!rendered.filenameUuidsMap[filename]
+		var fileIsNotAround = !partialExists(ractive, filename)
+		return thisPostChanged ? fileInThisPost : fileIsNotAround
+	})
 
-	filenamesToFetch.forEach(function (filename) {
-		util.getPost(filename, function (err, childPost) {
-			if (err) {
-				util.setCurrent.emit('error', err)
-			} else {
-				scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
-			}
+	var tasks = filenamesToFetch.map(function (filename) {
+		return function (next) {
+			return util.getPost(filename, function (err, childPost) {
+				if (err) {
+					util.emit('error', err)
+					next(null, null)
+				} else {
+					next(null, childPost)
+				}
+			})
+		}
+	})
+	parallel(tasks, function (_, childrenPosts) {
+		var actualPosts = childrenPosts.filter(Boolean)
+		actualPosts.forEach(function (childPost) {
+			scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
 		})
 	})
 }
@@ -122,10 +151,8 @@ function makePartialString(partialName, partialContext) {
 	return '{{>\'' + partialName + '\' ' + partialContext + '}}'
 }
 
-function filenameHasNoPartial(ractive) {
-	return function (filename) {
-		return !ractive.partials[normalizePartialName(filename)]
-	}
+function partialExists(ractive, filename) {
+	return !!ractive.partials[normalizePartialName(filename)]
 }
 
 function extendMapOfArrays(map1, map2) {
@@ -133,6 +160,12 @@ function extendMapOfArrays(map1, map2) {
 		combined[key] = (map1[key] || []).concat(map2[key] || [])
 		return combined
 	}, {})
+}
+
+function extendMapOfArraysMutate(map1, map2) {
+	Object.keys(map1).concat(Object.keys(map2)).forEach(function (key) {
+		map1[key] = (map1[key] || []).concat(map2[key] || [])
+	})
 }
 
 function postOrString(post, butler, cb) {
@@ -168,13 +201,4 @@ function augmentRootData(post, butler, cb) {
 
 function removeDots(str) {
 	return str.replace(/\./g, '')
-}
-
-function makeEmitter(fn) {
-	var emitter = new EventEmitter()
-	Object.keys(EventEmitter.prototype).filter(function(key) {
-		return typeof EventEmitter.prototype[key] === 'function'
-	}).forEach(function(key) {
-		fn[key] = EventEmitter.prototype[key].bind(emitter)
-	})
 }
