@@ -1,9 +1,11 @@
 var parseTemplate = require('noddity-template-parser')
 var Ractive = require('ractive')
 var extend = require('xtend')
+var extendMutate = require('xtend/mutable')
 var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
-var EventEmitter = require('events').EventEmitter
+var makeEmitter = require('make-object-an-emitter')
+var parallel = require('run-parallel')
 Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
@@ -23,6 +25,10 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			data: extend(options.data || {}),
 			template: rendered.templateString
 		})
+		var glbl = {
+			filenameUuidsMap: rendered.filenameUuidsMap,
+			uuidArgumentsMap: rendered.uuidArgumentsMap
+		}
 		ractive.resetPartial('current', '')
 
 		augmentRootData(rootPost, butler, function (err, data) {
@@ -39,11 +45,10 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 				var partialString = makePartialString(currPost.filename)
 				ractive.resetPartial('current', partialString)
-				scan(currPost, util, rendered.filenameUuidsMap, rendered.uuidArgumentsMap)
+				scan(currPost, util, glbl.filenameUuidsMap, glbl.uuidArgumentsMap)
 
 				onLoadCb(null)
 			})
-			global.DEBUG = true // FIXME
 		}
 
 		makeEmitter(setCurrent)
@@ -58,8 +63,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		butler.on('post changed', function (filename, post) {
 			if (partialExists(ractive, filename)) { // only scan for posts that are in the system
-				console.log('\n\nPOST CHANGED', filename, '\n\n')
-				scan(post, util, {}, {}, true)
+				scan(post, util, glbl.filenameUuidsMap, glbl.uuidArgumentsMap, true)
 			}
 		})
 	})
@@ -89,51 +93,51 @@ function render(linkifier, post) {
 }
 
 function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
-	if (global.DEBUG) console.log('scan', post.filename, post.metadata)
 	var ractive = util.ractive
-
 	var rendered = util.renderPost(post)
 
 	var partialName = normalizePartialName(post.filename)
 	ractive.resetPartial(partialName, rendered.templateString)
 
-	filenameUuidsMap = extendMapOfArrays(filenameUuidsMap, rendered.filenameUuidsMap)
-	uuidArgumentsMap = extend(uuidArgumentsMap, rendered.uuidArgumentsMap)
-	if (global.DEBUG && false) {
-		console.log(' filenameUuidsMap', filenameUuidsMap)
-		console.log(' uuidArgumentsMap', uuidArgumentsMap)
-	}
+	extendMapOfArraysMutate(filenameUuidsMap, rendered.filenameUuidsMap)
+	extendMutate(uuidArgumentsMap, rendered.uuidArgumentsMap)
 
-	createEmbeddedContexts(post, ractive, filenameUuidsMap, uuidArgumentsMap)
-
-	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(function (filename) {
-		// Keep the newly found filenames, and keep the non-existent filenames
-		var fileInThisPost = !!rendered.filenameUuidsMap[filename]
-		var fileIsNotAround = !partialExists(ractive, filename)
-		return (thisPostChanged && fileInThisPost) || fileIsNotAround
-	})
-	console.log(' fetch these', filenamesToFetch)
-
-	filenamesToFetch.forEach(function (filename) {
-		util.getPost(filename, function (err, childPost) {
-			if (err) {
-				util.emit('error', err)
-			} else {
-				scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
-			}
-		})
-	})
-}
-
-function createEmbeddedContexts(post, ractive, filenameUuidsMap, uuidArgumentsMap) {
-	console.log('creating context for', post.filename)
-	;(filenameUuidsMap[post.filename] || []).forEach(function (uuid) {
+	// Create embedded contexts
+	;(filenameUuidsMap[post.filename] || []).filter(function (uuid) {
+		var contextDoesNotExist = !partialExists(ractive, uuid)
+		return thisPostChanged || contextDoesNotExist
+	}).forEach(function (uuid) {
 		var templateArgs = uuidArgumentsMap[uuid]
 		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
 		var childContextPartial = makePartialString(post.filename, partialData)
 		var partialName = normalizePartialName(uuid)
 		ractive.resetPartial(partialName, childContextPartial)
-		console.log('created partial', partialName)
+	})
+
+	// Fetch any files that were found
+	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(function (filename) {
+		var fileInThisPost = !!rendered.filenameUuidsMap[filename]
+		var fileIsNotAround = !partialExists(ractive, filename)
+		return thisPostChanged ? fileInThisPost : fileIsNotAround
+	})
+
+	var tasks = filenamesToFetch.map(function (filename) {
+		return function (next) {
+			return util.getPost(filename, function (err, childPost) {
+				if (err) {
+					util.emit('error', err)
+					next(null, null)
+				} else {
+					next(null, childPost)
+				}
+			})
+		}
+	})
+	parallel(tasks, function (_, childrenPosts) {
+		var actualPosts = childrenPosts.filter(Boolean)
+		actualPosts.forEach(function (childPost) {
+			scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
+		})
 	})
 }
 
@@ -156,6 +160,12 @@ function extendMapOfArrays(map1, map2) {
 		combined[key] = (map1[key] || []).concat(map2[key] || [])
 		return combined
 	}, {})
+}
+
+function extendMapOfArraysMutate(map1, map2) {
+	Object.keys(map1).concat(Object.keys(map2)).forEach(function (key) {
+		map1[key] = (map1[key] || []).concat(map2[key] || [])
+	})
 }
 
 function postOrString(post, butler, cb) {
@@ -191,13 +201,4 @@ function augmentRootData(post, butler, cb) {
 
 function removeDots(str) {
 	return str.replace(/\./g, '')
-}
-
-function makeEmitter(fn) {
-	var emitter = new EventEmitter()
-	Object.keys(EventEmitter.prototype).filter(function(key) {
-		return typeof EventEmitter.prototype[key] === 'function'
-	}).forEach(function(key) {
-		fn[key] = EventEmitter.prototype[key].bind(emitter)
-	})
 }
