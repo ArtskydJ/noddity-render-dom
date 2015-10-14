@@ -22,35 +22,36 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: extend(options.data || {}),
+			data: {},
 			template: rendered.templateString
 		})
-		var glbl = {
+		var state = {
 			filenameUuidsMap: rendered.filenameUuidsMap,
 			uuidArgumentsMap: rendered.uuidArgumentsMap
 		}
 		ractive.resetPartial('current', '')
 
-		augmentRootData(rootPost, butler, function (err, data) {
-			if (err) return cb(err)
+		function setCurr(thisPostChanged, currentPostOrString, onLoadCb) {
+			if (!onLoadCb) onLoadCb = function () {}
 
-			data.removeDots = removeDots
-			ractive.set(data)
-
-			cb(null, setCurrent)
-		})
-
-		function setCurrent(currentPostOrString, onLoadCb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
 
-				var partialString = makePartialString(currPost.filename)
-				ractive.resetPartial('current', partialString)
-				scan(currPost, util, glbl.filenameUuidsMap, glbl.uuidArgumentsMap)
+				augmentCurrentData(currPost, butler, function (err, data) {
+					if (err) return onLoadCb(err)
 
-				onLoadCb(null)
+					data.removeDots = removeDots
+					ractive.reset(extend(options.data || {}, data)) // remove old data
+
+					var partialString = makePartialString(currPost.filename)
+					ractive.resetPartial('current', partialString)
+					scan(currPost, util, state.filenameUuidsMap, state.uuidArgumentsMap, thisPostChanged)
+
+					onLoadCb(null)
+				})
 			})
 		}
+		var setCurrent = setCurr.bind(null, false)
 
 		makeEmitter(setCurrent)
 		setCurrent.ractive = ractive
@@ -64,9 +65,15 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		butler.on('post changed', function (filename, post) {
 			if (partialExists(ractive, filename)) { // only scan for posts that are in the system
-				scan(post, util, glbl.filenameUuidsMap, glbl.uuidArgumentsMap, true)
+				if (filename === ractive.get('current')) {
+					setCurr(true, post)
+				} else {
+					scan(post, util, state.filenameUuidsMap, state.uuidArgumentsMap, true)
+				}
 			}
 		})
+
+		cb(null, setCurrent)
 	})
 }
 
@@ -179,7 +186,7 @@ function postOrString(post, butler, cb) {
 	}
 }
 
-function augmentRootData(post, butler, cb) {
+function augmentCurrentData(post, butler, cb) {
 	butler.getPosts(function(err, posts) {
 		if (err) {
 			cb(err)
