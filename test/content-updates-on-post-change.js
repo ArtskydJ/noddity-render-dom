@@ -15,6 +15,9 @@ test('contents update when the post changes', function(t) {
 		t.notOk(err, 'no error')
 		state.render(post, {}, function (err, setCurrent) {
 			t.notOk(err, 'no error')
+
+			setCurrent.on('error', t.fail.bind(t, 'error event'))
+
 			state.retrieval.getPost('file1.md', function(err, childPost) {
 				t.notOk(err, 'no error')
 				setCurrent(childPost, function (err) {
@@ -28,11 +31,70 @@ test('contents update when the post changes', function(t) {
 							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz new val arg</p> post that I <em>totally</em> wrote</p>')
 							t.end()
 						}, 500)
-
-						setCurrent.on('error', t.fail.bind(t, 'error event'))
 					}, 500)
 				})
 			})
+		})
+	})
+})
+
+test('contents update when the root post changes', { skip: true }, function(t) {
+	var state = makeTestState()
+	t.plan(4)
+
+	state.retrieval.addPost('root', { title: 'TEMPLAAAATE', markdown: false }, 'Echo {{>current}}')
+	state.retrieval.addPost('curr', { title: 'Some title', date: new Date() }, 'Hello world!!! {{title}}')
+
+
+	state.render('root', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent.on('error', t.fail.bind(t, 'error event'))
+
+		setCurrent('curr', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function () {
+				t.equal(setCurrent.ractive.toHTML(), 'Echo <p>Hello world!!! Some title</p>')
+
+				state.retrieval.addPost('root', { title: 'TEMPLAAATE 2', date: new Date(), markdown: false }, 'Echoing {{>current}}')
+				setTimeout(function () {
+					t.equal(setCurrent.ractive.toHTML(), 'Echoing <p>Hello world!!! Some title</p>')
+					t.end()
+				}, 500)
+			}, 500)
+		})
+	})
+})
+
+test('contents update when the current post changes', function(t) {
+	var state = makeTestState()
+	t.plan(5)
+
+	state.retrieval.addPost('root', { title: 'TEMPLAAAATE', markdown: false }, 'Echo {{>current}}')
+	state.retrieval.addPost('curr', { title: 'Some title', date: new Date() }, 'Hello world!!! {{title}}')
+
+
+	state.render('root', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent.on('error', t.fail.bind(t, 'error event'))
+
+		setCurrent('curr', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function () {
+				t.equal(setCurrent.ractive.toHTML(), 'Echo <p>Hello world!!! Some title</p>')
+
+				state.retrieval.addPost('curr', { title: 'Different title', date: new Date(), markdown: false, key: 'val' }, 'new {{key}} {{title}}')
+				setTimeout(function () {
+					t.equal(setCurrent.ractive.toHTML(), 'Echo new val Different title')
+
+					state.retrieval.addPost('curr', { title: 'Another title', date: new Date(), markdown: false }, 'newer {{key}}{{title}}')
+					setTimeout(function () {
+						t.equal(setCurrent.ractive.toHTML(), 'Echo newer Another title')
+						t.end()
+					}, 1500)
+				}, 500)
+			}, 500)
 		})
 	})
 })
