@@ -36,7 +36,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 				augmentCurrentData(currPost, butler, function (err, data) {
 					if (err) return onLoadCb(err)
 
-					var thisPostChanged = state.current === currPost.filename && false
+					var thisPostChanged = state.current === currPost.filename
 					state.current = currPost.filename
 
 					data.removeDots = removeDots
@@ -45,7 +45,6 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					var partialString = makePartialString(currPost.filename)
 					ractive.resetPartial('current', partialString)
 					scan(currPost, util, state, thisPostChanged)
-					//scan(currPost, util, state)
 
 					onLoadCb(null)
 				})
