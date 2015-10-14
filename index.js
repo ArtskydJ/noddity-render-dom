@@ -116,7 +116,7 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
 		return thisPostChanged || contextDoesNotExist
 	}).forEach(function (uuid) {
 		var templateArgs = uuidArgumentsMap[uuid]
-		var partialData = extend(post.metadata, templateArgs) // parent post metadata is not transferred...
+		var partialData = extend(post.metadata, templateArgs)
 		var childContextPartial = makePartialString(post.filename, partialData)
 		var partialName = normalizePartialName(uuid)
 		ractive.resetPartial(partialName, childContextPartial)
