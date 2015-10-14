@@ -4,7 +4,7 @@ var makeTestState = require('./helpers/test-state')
 
 test('contents update when the post changes', function(t) {
 	var state = makeTestState()
-	t.plan(6)
+	t.plan(7)
 
 	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a ::file2.md:: post that I *totally* wrote')
@@ -28,10 +28,15 @@ test('contents update when the post changes', function(t) {
 						state.retrieval.addPost('new', { title: 'Some title', date: new Date(), markdown: false, key: 'val' }, 'new {{key}} {{1}}')
 						state.retrieval.addPost('file2.md', { title: 'Some title', date: new Date(), lol: 'lolz' }, 'lol yeah ::herp|wat:: {{lol}} ::new|arg::')
 						setTimeout(function () {
-							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz new val arg</p> post that I <em>totally</em> wrote</p>')
-							t.end()
-						}, 500)
-					}, 500)
+							t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lolz new val arg</p> post that I <em>totally</em> wrote</p>', 'metadata gets added')
+
+							state.retrieval.addPost('file2.md', { title: 'Some title', date: new Date() }, 'lol yeah ::herp|wat:: {{lol}} ::new|arg::')
+							setTimeout(function () {
+								t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat  new val arg</p> post that I <em>totally</em> wrote</p>', 'metadata gets removed')
+								t.end()
+							}, 700)
+						}, 700)
+					}, 700)
 				})
 			})
 		})
