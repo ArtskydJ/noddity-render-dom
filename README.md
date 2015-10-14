@@ -66,10 +66,21 @@ Call the function to change the current post to a different post.
 	- `err` is an Error object
 
 ```js
+setCurrent('my-post.md', function (err) {
+	if (err) throw err // Could not set 'my-post.md' to be the current post
+})
+
 setCurrent.on('error', function (err) {
-	console.error(err)
+	console.error(err) // Probably an embedded template didn't load
 })
 ```
+
+# values accessible in ractive expressions
+
+- `postList`: an array of post objects that have dates, ordered by date descending.  Metadata is accessible on the object iself without having to use the `metadata` property
+- `posts`: an object whose keys are the post file names, and whose value is the post object.  Right now the keys all have periods `.` stripped from them due to an issue with Ractive
+- `removeDots`: a function that takes a string as input and returns a version with dots `.` removed
+- `current`: the file name of the currently displayed post (the one specified in the url)
 
 # license
 
