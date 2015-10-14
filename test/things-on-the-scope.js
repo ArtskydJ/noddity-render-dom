@@ -44,7 +44,6 @@ test('post list is properly in scope in an embedded template, and the current fi
 	var state = makeTestState()
 	t.plan(5)
 
-	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
 	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date(1442361866264) }, ['<ol>{{#postList}}',
 				'<li><a href="{{pathPrefix}}{{pagePathPrefix}}{{filename}}">{{title}}</a></li>',
 			'{{/postList}}</ol>{{current}}'].join('\n'))
@@ -74,6 +73,23 @@ test('post list is properly in scope in an embedded template, and the current fi
 					}, 10)
 				})
 			})
+		})
+	})
+})
+
+test('removeDots function', function(t) {
+	var state = makeTestState()
+	t.plan(3)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
+	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date(1442361866264), markdown: false }, '{{removeDots("a.b.c")}}')
+
+	state.render('post', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+		setCurrent('file1.md', function (err) {
+			t.notOk(err, 'no error')
+			t.equal(setCurrent.ractive.toHTML(), 'abc')
+			t.end()
 		})
 	})
 })

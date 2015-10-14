@@ -34,6 +34,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		augmentRootData(rootPost, butler, function (err, data) {
 			if (err) return cb(err)
 
+			data.removeDots = removeDots
 			ractive.set(data)
 
 			cb(null, setCurrent)
