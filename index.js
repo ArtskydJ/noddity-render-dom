@@ -18,21 +18,17 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 	postOrString(rootPostOrString, butler, function (err, rootPost) {
 		if (err) return cb(err)
-		var rendered = renderPost(rootPost)
+		var state = renderPost(rootPost)
 
 		var ractive = new Ractive({
 			el: options.el,
 			data: {},
-			template: rendered.templateString
+			template: state.templateString
 		})
-		var state = {
-			filenameUuidsMap: rendered.filenameUuidsMap,
-			uuidArgumentsMap: rendered.uuidArgumentsMap
-		}
 		ractive.resetPartial('current', '')
 
-		function setCurr(thisPostChanged, currentPostOrString, onLoadCb) {
-			if (!onLoadCb) onLoadCb = function () {}
+		function setCurrent(currentPostOrString, onLoadCb) {
+			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
 
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
@@ -40,18 +36,21 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 				augmentCurrentData(currPost, butler, function (err, data) {
 					if (err) return onLoadCb(err)
 
+					var thisPostChanged = state.current === currPost.filename && false
+					state.current = currPost.filename
+
 					data.removeDots = removeDots
 					ractive.reset(extend(options.data || {}, data)) // remove old data
 
 					var partialString = makePartialString(currPost.filename)
 					ractive.resetPartial('current', partialString)
-					scan(currPost, util, state.filenameUuidsMap, state.uuidArgumentsMap, thisPostChanged)
+					scan(currPost, util, state, thisPostChanged)
+					//scan(currPost, util, state)
 
 					onLoadCb(null)
 				})
 			})
 		}
-		var setCurrent = setCurr.bind(null, false)
 
 		makeEmitter(setCurrent)
 		setCurrent.ractive = ractive
@@ -65,10 +64,10 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		butler.on('post changed', function (filename, post) {
 			if (partialExists(ractive, filename)) { // only scan for posts that are in the system
-				if (filename === ractive.get('current')) {
-					setCurr(true, post)
+				if (filename === state.current) {
+					setCurrent(post)
 				} else {
-					scan(post, util, state.filenameUuidsMap, state.uuidArgumentsMap, true)
+					scan(post, util, state, true)
 				}
 			}
 		})
@@ -100,22 +99,22 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
+function scan(post, util, state, thisPostChanged) {
 	var ractive = util.ractive
 	var rendered = util.renderPost(post)
 
 	var partialName = normalizePartialName(post.filename)
 	ractive.resetPartial(partialName, rendered.templateString)
 
-	extendMapOfArraysMutate(filenameUuidsMap, rendered.filenameUuidsMap)
-	extendMutate(uuidArgumentsMap, rendered.uuidArgumentsMap)
+	extendMapOfArraysMutate(state.filenameUuidsMap, rendered.filenameUuidsMap)
+	extendMutate(state.uuidArgumentsMap, rendered.uuidArgumentsMap)
 
 	// Create embedded contexts
-	;(filenameUuidsMap[post.filename] || []).filter(function (uuid) {
+	;(state.filenameUuidsMap[post.filename] || []).filter(function (uuid) {
 		var contextDoesNotExist = !partialExists(ractive, uuid)
 		return thisPostChanged || contextDoesNotExist
 	}).forEach(function (uuid) {
-		var templateArgs = uuidArgumentsMap[uuid]
+		var templateArgs = state.uuidArgumentsMap[uuid]
 		var partialData = extend(post.metadata, templateArgs)
 		var childContextPartial = makePartialString(post.filename, partialData)
 		var partialName = normalizePartialName(uuid)
@@ -123,7 +122,7 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
 	})
 
 	// Fetch any files that were found
-	var filenamesToFetch = Object.keys(filenameUuidsMap).filter(function (filename) {
+	var filenamesToFetch = Object.keys(state.filenameUuidsMap).filter(function (filename) {
 		var fileInThisPost = !!rendered.filenameUuidsMap[filename]
 		var fileIsNotAround = !partialExists(ractive, filename)
 		return thisPostChanged ? fileInThisPost : fileIsNotAround
@@ -144,7 +143,7 @@ function scan(post, util, filenameUuidsMap, uuidArgumentsMap, thisPostChanged) {
 	parallel(tasks, function (_, childrenPosts) {
 		var actualPosts = childrenPosts.filter(Boolean)
 		actualPosts.forEach(function (childPost) {
-			scan(childPost, util, filenameUuidsMap, uuidArgumentsMap)
+			scan(childPost, util, state)
 		})
 	})
 }
