@@ -89,17 +89,18 @@ test('contents update when the current post changes', function(t) {
 			setTimeout(function () {
 				t.equal(setCurrent.ractive.toHTML(), 'Echo <p>Hello world!!! Some title</p>')
 
-				state.retrieval.addPost('curr', { title: 'Different title', date: new Date(), markdown: false, key: 'val' }, 'new {{key}} {{title}}')
+				state.retrieval.addPost('new', { title: 'Different title', date: new Date(), markdown: false }, '{{1}}')
+				state.retrieval.addPost('curr', { title: 'Different title', date: new Date(), markdown: false, key: 'val' }, 'new {{key}} {{title}} ::new|update 1::')
 				setTimeout(function () {
-					t.equal(setCurrent.ractive.toHTML(), 'Echo new val Different title')
+					t.equal(setCurrent.ractive.toHTML(), 'Echo new val Different title update 1')
 
-					state.retrieval.addPost('curr', { title: 'Another title', date: new Date(), markdown: false }, 'newer {{key}}{{title}}')
+					state.retrieval.addPost('curr', { title: 'Another title', date: new Date(), markdown: false }, 'newer {{key}}{{title}} ::new|update 2::')
 					setTimeout(function () {
-						t.equal(setCurrent.ractive.toHTML(), 'Echo newer Another title')
+						t.equal(setCurrent.ractive.toHTML(), 'Echo newer Another title update 2')
 						t.end()
 					}, 1500)
-				}, 500)
-			}, 500)
+				}, 700)
+			}, 700)
 		})
 	})
 })
