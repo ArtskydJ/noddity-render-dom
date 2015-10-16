@@ -43,7 +43,7 @@ test('contents update when the post changes', function(t) {
 	})
 })
 
-test('contents update when the root post changes', { skip: true }, function(t) {
+test('contents update when the root post changes', function(t) {
 	var state = makeTestState()
 	t.plan(4)
 

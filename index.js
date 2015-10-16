@@ -23,9 +23,16 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		var ractive = new Ractive({
 			el: options.el,
 			data: {},
-			template: state.templateString
+			template: makePartialString(rootPost.filename)
 		})
-		ractive.resetPartial('current', '')
+		function resetPartial(partialName, templateString) {
+			ractive.resetPartial(normalizePartialName(partialName), templateString)
+		}
+		function partialExists(filename) {
+			return filename && !!ractive.partials[normalizePartialName(filename)]
+		}
+		resetPartial(rootPost.filename, state.templateString)
+		resetPartial('current', '')
 
 		function setCurrent(currentPostOrString, onLoadCb) {
 			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
@@ -42,8 +49,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					data.removeDots = removeDots
 					ractive.reset(extend(options.data || {}, data)) // remove old data
 
-					var partialString = makePartialString(currPost.filename)
-					ractive.resetPartial('current', partialString)
+					resetPartial('current', makePartialString(currPost.filename))
 					scan(currPost, util, state, thisPostChanged)
 
 					onLoadCb(null)
@@ -58,11 +64,12 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			getPost: butler.getPost,
 			renderPost: renderPost,
 			emit: setCurrent.emit.bind(setCurrent),
-			ractive: ractive
+			partialExists: partialExists,
+			resetPartial: resetPartial
 		}
 
 		butler.on('post changed', function (filename, post) {
-			if (partialExists(ractive, filename)) { // only scan for posts that are in the system
+			if (partialExists(filename)) { // only scan for posts that are in the system
 				if (filename === state.current) {
 					setCurrent(post)
 				} else {
@@ -99,32 +106,26 @@ function render(linkifier, post) {
 }
 
 function scan(post, util, state, thisPostChanged) {
-	var ractive = util.ractive
 	var rendered = util.renderPost(post)
 
-	var partialName = normalizePartialName(post.filename)
-	ractive.resetPartial(partialName, rendered.templateString)
+	util.resetPartial(post.filename, rendered.templateString)
 
 	extendMapOfArraysMutate(state.filenameUuidsMap, rendered.filenameUuidsMap)
 	extendMutate(state.uuidArgumentsMap, rendered.uuidArgumentsMap)
 
 	// Create embedded contexts
 	;(state.filenameUuidsMap[post.filename] || []).filter(function (uuid) {
-		var contextDoesNotExist = !partialExists(ractive, uuid)
-		return thisPostChanged || contextDoesNotExist
+		return thisPostChanged || !util.partialExists(uuid)
 	}).forEach(function (uuid) {
 		var templateArgs = state.uuidArgumentsMap[uuid]
 		var partialData = extend(post.metadata, templateArgs)
-		var childContextPartial = makePartialString(post.filename, partialData)
-		var partialName = normalizePartialName(uuid)
-		ractive.resetPartial(partialName, childContextPartial)
+		util.resetPartial(uuid, makePartialString(post.filename, partialData))
 	})
 
 	// Fetch any files that were found
 	var filenamesToFetch = Object.keys(state.filenameUuidsMap).filter(function (filename) {
-		var fileInThisPost = !!rendered.filenameUuidsMap[filename]
-		var fileIsNotAround = !partialExists(ractive, filename)
-		return thisPostChanged ? fileInThisPost : fileIsNotAround
+		var fileIsInThisPost = !!rendered.filenameUuidsMap[filename]
+		return thisPostChanged ? fileIsInThisPost : !util.partialExists(filename)
 	})
 
 	var tasks = filenamesToFetch.map(function (filename) {
@@ -155,10 +156,6 @@ function makePartialString(partialName, partialContext) {
 	partialName = normalizePartialName(partialName)
 	partialContext = (partialContext ? JSON.stringify(partialContext) : '')
 	return '{{>\'' + partialName + '\' ' + partialContext + '}}'
-}
-
-function partialExists(ractive, filename) {
-	return !!ractive.partials[normalizePartialName(filename)]
 }
 
 function extendMapOfArrays(map1, map2) {
