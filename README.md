@@ -13,7 +13,7 @@ var Linkifier = require('noddity-linkifier')
 var LevelJs = require('level-js')
 
 var db = new LevelJs('noddity-posts-db')
-var butler = new Butler('http://example.com/blogfiles/', levelUpDb)
+var butler = new Butler('http://example.com/blogfiles/', db)
 var linkifier = new Linkifier('#/myposts/')
 
 var options = {
