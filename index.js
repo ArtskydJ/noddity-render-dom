@@ -23,7 +23,9 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		var ractive = new Ractive({
 			el: options.el,
 			data: {},
-			template: makePartialString(rootPost.filename)
+			template: state.templateString,
+			staticDelimiters: [ '[[static]]', '[[/static]]' ],
+			staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ]
 		})
 		function resetPartial(partialName, templateString) {
 			ractive.resetPartial(normalizePartialName(partialName), templateString)
@@ -158,12 +160,6 @@ function makePartialString(partialName, partialContext) {
 	return '{{>\'' + partialName + '\' ' + partialContext + '}}'
 }
 
-function extendMapOfArrays(map1, map2) {
-	return Object.keys(map1).concat(Object.keys(map2)).reduce(function (combined, key) {
-		combined[key] = (map1[key] || []).concat(map2[key] || [])
-		return combined
-	}, {})
-}
 
 function extendMapOfArraysMutate(map1, map2) {
 	Object.keys(map1).concat(Object.keys(map2)).forEach(function (key) {
