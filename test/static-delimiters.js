@@ -2,7 +2,7 @@ var test = require('tape')
 
 var makeTestState = require('./helpers/test-state')
 
-test('mediawiki style links work', { skip: true }, function(t) {
+test('mediawiki style links work', function(t) {
 	var state = makeTestState()
 	t.plan(3)
 

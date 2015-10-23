@@ -23,12 +23,12 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		var ractive = new Ractive({
 			el: options.el,
 			data: {},
-			template: makePartialString(rootPost.filename),
-			staticDelimiters: [ '[[static]]', '[[/static]]' ],
-			staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ]
+			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
+			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
+			template: makePartialString(rootPost.filename)
 		})
 		function resetPartial(partialName, templateString) {
-			ractive.resetPartial(normalizePartialName(partialName), templateString)
+			ractive.resetPartial(normalizePartialName(partialName), '[[=[[static]] [[/static]]=]]\n' + templateString) // horrible hack
 		}
 		function partialExists(filename) {
 			return filename && !!ractive.partials[normalizePartialName(filename)]

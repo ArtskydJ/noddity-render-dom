@@ -12,7 +12,7 @@ module.exports = function testState() {
 	var butler = new Butler(retrieval, db, {
 		refreshEvery: 100
 	})
-	var linkifier = new Linkify('#/prefix')
+	var linkifier = new Linkify('#/prefix/')
 
 	function render(rootPost, data, cb) {
 		if (!rootPost) throw new Error('No root post!')
