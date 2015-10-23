@@ -23,7 +23,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		var ractive = new Ractive({
 			el: options.el,
 			data: {},
-			template: state.templateString,
+			template: makePartialString(rootPost.filename),
 			staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ]
 		})
