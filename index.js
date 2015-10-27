@@ -19,6 +19,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 	postOrString(rootPostOrString, butler, function (err, rootPost) {
 		if (err) return cb(err)
 		var state = renderPost(rootPost)
+		var currentFilename = ''
 
 		var ractive = new Ractive({
 			el: options.el,
@@ -28,13 +29,12 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			template: makePartialString(rootPost.filename)
 		})
 		function resetPartial(partialName, templateString) {
-			ractive.resetPartial(normalizePartialName(partialName), '[[=[[static]] [[/static]]=]]\n' + templateString) // horrible hack
+			ractive.resetPartial(partialName, '[[=[[static]] [[/static]]=]]\n' + templateString) // horrible hack
 		}
 		function partialExists(filename) {
-			return filename && !!ractive.partials[normalizePartialName(filename)]
+			return filename && !!ractive.partials[filename]
 		}
 		resetPartial(rootPost.filename, state.templateString)
-		resetPartial('current', '')
 
 		function setCurrent(currentPostOrString, onLoadCb) {
 			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
@@ -45,14 +45,11 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 				augmentCurrentData(currPost, butler, function (err, data) {
 					if (err) return onLoadCb(err)
 
-					var thisPostChanged = state.current === currPost.filename
-					state.current = currPost.filename
-
 					data.removeDots = removeDots
 					ractive.reset(extend(options.data || {}, data)) // remove old data
 
-					resetPartial('current', makePartialString(currPost.filename))
-					scan(currPost, util, state, thisPostChanged)
+					scan(currPost, util, state, currentFilename === currPost.filename)
+					currentFilename = currPost.filename
 
 					onLoadCb(null)
 				})
@@ -71,8 +68,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		}
 
 		butler.on('post changed', function (filename, post) {
-			if (partialExists(filename)) { // only scan for posts that are in the system
-				if (filename === state.current) {
+			if (partialExists(filename)) { // Only cares about posts that are in the system
+				if (filename === currentFilename) { // Current post changed
 					setCurrent(post)
 				} else {
 					scan(post, util, state, true)
@@ -150,12 +147,7 @@ function scan(post, util, state, thisPostChanged) {
 	})
 }
 
-function normalizePartialName(partialName) {
-	return partialName.replace(/\./g, '_')
-}
-
 function makePartialString(partialName, partialContext) {
-	partialName = normalizePartialName(partialName)
 	partialContext = (partialContext ? JSON.stringify(partialContext) : '')
 	return '{{>\'' + partialName + '\' ' + partialContext + '}}'
 }
