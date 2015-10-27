@@ -34,7 +34,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		function partialExists(filename) {
 			return filename && !!ractive.partials[filename]
 		}
-		resetPartial(rootPost.filename, state.templateString)
+		resetPartial(rootPost.filename, state.templateString.replace('{{{html}}}', '{{>current}}'))
 
 		function setCurrent(currentPostOrString, onLoadCb) {
 			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
@@ -107,7 +107,7 @@ function render(linkifier, post) {
 function scan(post, util, state, thisPostChanged) {
 	var rendered = util.renderPost(post)
 
-	util.resetPartial(post.filename, rendered.templateString)
+	util.resetPartial(post.filename, rendered.templateString.replace('{{{html}}}', '{{>current}}'))
 
 	extendMapOfArraysMutate(state.filenameUuidsMap, rendered.filenameUuidsMap)
 	extendMutate(state.uuidArgumentsMap, rendered.uuidArgumentsMap)

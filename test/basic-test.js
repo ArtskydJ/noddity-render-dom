@@ -100,3 +100,28 @@ test('render by filename instead of post objects', function(t) {
 		})
 	})
 })
+
+test('backwards compatibility for {{{html}}}', function(t) {
+	var state = makeTestState()
+	t.plan(4)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{{html}}} ::2.md::')
+	state.retrieval.addPost('file1.md', { title: 'Some title', date: new Date() }, 'This is a post that I *totally* wrote')
+	state.retrieval.addPost('2.md', { title: 'Some title', date: new Date() }, 'lol yeah')
+	state.render('post', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent('file1.md', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function() {
+				t.equal(setCurrent.ractive.toHTML(), '<p>This is a post that I <em>totally</em> wrote</p> <p>lol yeah</p>')
+
+				state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '__ {{{html}}} ::2.md::')
+				setTimeout(function() {
+					t.equal(setCurrent.ractive.toHTML(), '__ <p>This is a post that I <em>totally</em> wrote</p> <p>lol yeah</p>')
+					t.end()
+				}, 1000)
+			}, 10)
+		})
+	})
+})

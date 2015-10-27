@@ -80,7 +80,7 @@ setCurrent.on('error', function (err) {
 - `postList`: an array of post objects that have dates, ordered by date descending.  Metadata is accessible on the object iself without having to use the `metadata` property
 - `posts`: an object whose keys are the post file names, and whose value is the post object.  Right now the keys all have periods `.` stripped from them due to an issue with Ractive
 - `removeDots`: a function that takes a string as input and returns a version with dots `.` removed
-- `current`: the file name of the currently displayed post (the one specified in the url)
+- `current`: the file name of the currently displayed post (the one specified in the url).  Also a partial of the current post (set by `setCurrent()`). Can be accessed by doing `{{>current}}` or `{{{html}}}`
 
 # license
 
