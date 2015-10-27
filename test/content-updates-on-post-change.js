@@ -104,3 +104,43 @@ test('contents update when the current post changes', function(t) {
 		})
 	})
 })
+
+test('contents update when the current post changes and setCurrent is called right afterward', function(t) {
+	var state = makeTestState()
+	t.plan(7)
+
+	state.retrieval.addPost('root', { title: 'TEMPLAAAATE', markdown: false }, 'Echo {{>current}}')
+	state.retrieval.addPost('curr', { title: 'Some title', date: new Date() }, 'Hello world!!! {{title}}')
+
+
+	state.render('root', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent.on('error', t.fail.bind(t, 'error event'))
+
+		setCurrent('curr', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function () {
+				t.equal(setCurrent.ractive.toHTML(), 'Echo <p>Hello world!!! Some title</p>')
+
+				state.retrieval.addPost('new', { title: 'Different title', date: new Date(), markdown: false }, '{{1}}')
+				state.retrieval.addPost('curr', { title: 'Different title', date: new Date(), markdown: false, key: 'val' }, 'new {{key}} {{title}} ::new|update 1::')
+				setCurrent('curr', function (err) {
+					t.notOk(err, 'no error')
+					setTimeout(function () {
+						t.equal(setCurrent.ractive.toHTML(), 'Echo new val Different title update 1')
+
+						state.retrieval.addPost('curr', { title: 'Another title', date: new Date(), markdown: false }, 'newer {{key}}{{title}} ::new|update 2::')
+						setCurrent('curr', function (err) {
+							t.notOk(err, 'no error')
+							setTimeout(function () {
+								t.equal(setCurrent.ractive.toHTML(), 'Echo newer Another title update 2')
+								t.end()
+							}, 1500)
+						})
+					}, 700)
+				})
+			}, 700)
+		})
+	})
+})
