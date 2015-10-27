@@ -34,7 +34,6 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		function partialExists(filename) {
 			return filename && !!ractive.partials[filename]
 		}
-		resetPartial(rootPost.filename, state.templateString.replace('{{{html}}}', '{{>current}}'))
 
 		function setCurrent(currentPostOrString, onLoadCb) {
 			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
@@ -77,6 +76,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			}
 		})
 
+		scan(rootPost, util, state)
 		cb(null, setCurrent)
 	})
 }

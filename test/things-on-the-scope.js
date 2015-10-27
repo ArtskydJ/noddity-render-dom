@@ -90,3 +90,20 @@ test('removeDots function', function(t) {
 		})
 	})
 })
+
+test('does not wait for setCurrent() to load templates inside of root', function(t) {
+	var state = makeTestState()
+	t.plan(2)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}} ::2.md::')
+	state.retrieval.addPost('2.md', { title: 'Some title', date: new Date() }, 'lol yeah ::3.md::')
+	state.retrieval.addPost('3.md', { title: 'Some title', date: new Date() }, 'roflcopter')
+	state.render('post', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setTimeout(function() {
+			t.equal(setCurrent.ractive.toHTML(), ' <p>lol yeah <p>roflcopter</p></p>')
+			t.end()
+		}, 30)
+	})
+})
