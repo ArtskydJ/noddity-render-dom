@@ -123,8 +123,7 @@ function scan(post, util, state, thisPostChanged) {
 
 	// Fetch any files that were found
 	var filenamesToFetch = Object.keys(state.filenameUuidsMap).filter(function (filename) {
-		var fileIsInThisPost = !!rendered.filenameUuidsMap[filename]
-		return thisPostChanged ? fileIsInThisPost : !util.partialExists(filename)
+		return rendered.filenameUuidsMap[filename] // File is in this post
 	})
 
 	var tasks = filenamesToFetch.map(function (filename) {

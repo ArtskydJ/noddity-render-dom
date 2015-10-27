@@ -125,3 +125,37 @@ test('backwards compatibility for {{{html}}}', function(t) {
 		})
 	})
 })
+
+test('[a,b,a].forEach(setCurrent)', function(t) {
+	var state = makeTestState()
+	t.plan(7)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
+	state.retrieval.addPost('a.md', { title: 'Some title', date: new Date() }, 'This is a ::1.md:: post that I *totally* wrote')
+	state.retrieval.addPost('1.md', { title: 'Some title', date: new Date() }, 'lol yeah')
+	state.retrieval.addPost('b.md', { title: 'Some title', date: new Date() }, 'This is a ::2.md:: post that I **wish** I wrote')
+	state.retrieval.addPost('2.md', { title: 'Some title', date: new Date() }, 'roflcopter')
+	state.render('post', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent('a.md', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function() {
+				t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+				setCurrent('b.md', function (err) {
+					t.notOk(err, 'no error')
+					setTimeout(function() {
+						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>roflcopter</p> post that I <strong>wish</strong> I wrote</p>')
+						setCurrent('a.md', function (err) {
+							t.notOk(err, 'no error')
+							setTimeout(function() {
+								t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+								t.end()
+							}, 2000)
+						})
+					}, 1000)
+				})
+			}, 10)
+		})
+	})
+})
