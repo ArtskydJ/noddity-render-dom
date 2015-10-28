@@ -25,7 +25,7 @@
   "homepage": "https://github.com/ArtskydJ/noddity-render-dom#readme",
   "dependencies": {
     "make-object-an-emitter": "^1.0.1",
-    "noddity-template-parser": "^1.0.0",
+    "noddity-template-parser": "^1.0.4",
     "onetime": "^1.0.0",
     "ractive": "^0.7.3",
     "random-uuid-v4": "0.0.5",
