@@ -74,6 +74,32 @@ test('post list is properly in scope in an embedded template, and the current fi
 	})
 })
 
+test('metadata is on scope', function(t) {
+	var state = makeTestState()
+	t.plan(4)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{metadata.title}} {{>current}}')
+	state.retrieval.addPost('file1.md', { title: 'current title', date: new Date(1442361866265) }, '{{metadata.title}} ::file2.md::')
+	state.retrieval.addPost('file2.md', { title: 'A third title', date: new Date(1442361866265) }, '{{metadata.title}}')
+
+	var data = {
+		pathPrefix: '#!/',
+		pagePathPrefix: 'post/'
+	}
+	state.render('post', data, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent('file1.md', function (err) {
+			t.notOk(err, 'no error')
+			setTimeout(function () {
+				t.notOk(err, 'no error')
+				t.equal(setCurrent.ractive.toHTML(), 'current title <p>current title <p>current title</p></p>')
+				t.end()
+			}, 10)
+		})
+	})
+})
+
 test('removeDots function', function(t) {
 	var state = makeTestState()
 	t.plan(3)

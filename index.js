@@ -183,6 +183,7 @@ function augmentCurrentData(post, butler, cb) {
 					posts[removeDots(post.filename)] = post
 					return posts
 				}, {}),
+				metadata: post.metadata,
 				current: post.filename
 			}))
 		}
