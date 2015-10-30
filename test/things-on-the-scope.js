@@ -78,9 +78,9 @@ test('metadata is on scope', function(t) {
 	var state = makeTestState()
 	t.plan(4)
 
-	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{metadata.title}} {{>current}}')
-	state.retrieval.addPost('file1.md', { title: 'current title', date: new Date(1442361866265) }, '{{metadata.title}} ::file2.md::')
-	state.retrieval.addPost('file2.md', { title: 'A third title', date: new Date(1442361866265) }, '{{metadata.title}}')
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{metadata.title}} {{title}} {{>current}}')
+	state.retrieval.addPost('file1.md', { title: 'current title', date: new Date(1442361866265) }, '{{metadata.title}} {{title}} ::file2.md::')
+	state.retrieval.addPost('file2.md', { title: 'A third title', date: new Date(1442361866265) }, '{{metadata.title}} {{title}}')
 
 	var data = {
 		pathPrefix: '#!/',
@@ -93,7 +93,7 @@ test('metadata is on scope', function(t) {
 			t.notOk(err, 'no error')
 			setTimeout(function () {
 				t.notOk(err, 'no error')
-				t.equal(setCurrent.ractive.toHTML(), 'current title <p>current title <p>current title</p></p>')
+				t.equal(setCurrent.ractive.toHTML(), 'current title current title <p>current title current title <p>current title A third title</p></p>')
 				t.end()
 			}, 10)
 		})
