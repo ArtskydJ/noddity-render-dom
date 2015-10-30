@@ -28,9 +28,9 @@ test('post list is properly in scope', function(t) {
 						t.notOk(err, 'no error')
 						t.equal(setCurrent.ractive.toHTML(), [
 							'<ol>',
-								'<li><a href="#!/post/file1.md">Some title</a></li>',
-								'<li><a href="#!/post/file2.md">Another title</a></li>',
 								'<li><a href="#!/post/herp">Even moar title</a></li>',
+								'<li><a href="#!/post/file2.md">Another title</a></li>',
+								'<li><a href="#!/post/file1.md">Some title</a></li>',
 							'</ol>'].join(''))
 						t.end()
 					}, 10)
@@ -64,9 +64,9 @@ test('post list is properly in scope in an embedded template, and the current fi
 				t.notOk(err, 'no error')
 				t.equal(setCurrent.ractive.toHTML(), [
 					'<ol>',
-						'<li><a href="#!/post/file1.md">Some title</a></li>',
-						'<li><a href="#!/post/file2.md">Another title</a></li>',
 						'<li><a href="#!/post/container">Container</a></li>',
+						'<li><a href="#!/post/file2.md">Another title</a></li>',
+						'<li><a href="#!/post/file1.md">Some title</a></li>',
 					'</ol>containercontainer'].join(''))
 				t.end()
 			}, 10)

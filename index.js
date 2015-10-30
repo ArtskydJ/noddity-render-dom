@@ -174,8 +174,8 @@ function augmentCurrentData(post, butler, cb) {
 			cb(err)
 		} else {
 			cb(null, extend(post.metadata, {
-				postList: posts.filter(function(post) {
-					return post.metadata.date
+				postList: posts.reverse().filter(function(post) {
+					return typeof post.metadata.title === 'string' && post.metadata.date
 				}).map(function(post) {
 					return extend(post, post.metadata)
 				}),
