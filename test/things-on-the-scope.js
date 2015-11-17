@@ -133,3 +133,22 @@ test('does not wait for setCurrent() to load templates inside of root', function
 		}, 30)
 	})
 })
+
+
+test('querystring parameters for post filenames', function(t) {
+	var state = makeTestState()
+	t.plan(3)
+
+	state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '{{>current}}')
+	state.retrieval.addPost('thing.md', { title: 'Some title', date: new Date() }, 'lol yeah {{querystring.wut}} {{querystring.nope}}')
+	state.render('post', {}, function (err, setCurrent) {
+		t.notOk(err, 'no error')
+
+		setCurrent('thing.md?wut=haha', function (err) {
+			t.notOk(err, 'no error')
+
+			t.equal(setCurrent.ractive.toHTML(), '<p>lol yeah haha </p>')
+			t.end()
+		})
+	})
+})

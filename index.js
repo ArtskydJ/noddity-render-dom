@@ -6,6 +6,7 @@ var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
 var parallel = require('run-parallel')
+var qs = require('querystring')
 Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
@@ -38,6 +39,15 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		function setCurrent(currentPostOrString, onLoadCb) {
 			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
 
+			var query = {}
+			if (typeof currentPostOrString === 'string') {
+				var startOfQuery = currentPostOrString.indexOf('?')
+				if (startOfQuery !== -1) {
+					query = qs.parse(currentPostOrString.slice(startOfQuery + 1))
+					currentPostOrString = currentPostOrString.slice(0, startOfQuery)
+				}
+			}
+
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
 
@@ -45,7 +55,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					if (err) return onLoadCb(err)
 
 					data.removeDots = removeDots
-					ractive.reset(extend(options.data || {}, data)) // remove old data
+					ractive.reset(extend(options.data || {}, { querystring: query }, data)) // reset() removes old data
 
 					scan(currPost, util, state, currentFilename === currPost.filename)
 					currentFilename = currPost.filename

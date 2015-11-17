@@ -29,7 +29,7 @@ var options = {
 }
 
 renderDom('post-template.html', options, function (err, setCurrent) {
-	setCurrent('my-awesome-post.md', function (err) {
+	setCurrent('my-awesome-post.md?q=hello', function (err) {
 		if (err) throw err // 404
 	})
 })
@@ -57,7 +57,7 @@ var renderDom = require('noddity-render-dom')
 
 Call the function to change the current post to a different post.
 
-- `post`: a Noddity post object, or a post filename
+- `post`: a Noddity post object, or a post filename (with an optional querystring)
 - `cb(err)`: an optional function that is called when the current post is set or a fatal error occurs
 
 ### events
