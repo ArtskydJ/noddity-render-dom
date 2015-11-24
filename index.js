@@ -25,6 +25,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		var ractive = new Ractive({
 			el: options.el,
 			data: {},
+			partials: { post: '' },
 			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
@@ -117,6 +118,7 @@ function render(linkifier, post) {
 function scan(post, util, state, thisPostChanged) {
 	var rendered = util.renderPost(post)
 
+	// The following line causes a ractive warning if the "current" template is undefined
 	util.resetPartial(post.filename, rendered.templateString.replace('{{{html}}}', '{{>current}}'))
 
 	extendMapOfArraysMutate(state.filenameUuidsMap, rendered.filenameUuidsMap)
