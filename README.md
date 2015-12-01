@@ -29,7 +29,7 @@ var options = {
 }
 
 renderDom('post-template.html', options, function (err, setCurrent) {
-	setCurrent('my-awesome-post.md?q=hello', function (err) {
+	setCurrent('my-awesome-post.md', function (err) {
 		if (err) throw err // 404
 	})
 })
@@ -48,17 +48,18 @@ var renderDom = require('noddity-render-dom')
 	- `butler`: a [Noddity Butler](https://www.npmjs.com/package/noddity-butler)
 	- `linkifier`: a [Noddity Linkifier](https://www.npmjs.com/package/noddity-linkifier)
 	- `el`: a selector string of the element to which the Ractive object will be bound. *Optional*
-	- `data`: Any properties on the `data` object will be made available to the templates. *Optional*
+	- `data`: any properties on the `data` object will be made available to the templates. *Optional*
 - `cb(err, setCurrent)`: a function to be called when the first render is finished.
 
-## `setCurrent(post, [cb])`
+## `setCurrent(post, [data,] [cb])`
 
 `setCurrent` is a function/event emitter.
 
 Call the function to change the current post to a different post.
 
-- `post`: a Noddity post object, or a post filename (with an optional querystring)
-- `cb(err)`: an optional function that is called when the current post is set or a fatal error occurs
+- `post`: a Noddity post object, or a post filename
+- `data`: any properties on the `data` object will be made available to the templates. *Optional*
+- `cb(err)`: an optional function that is called when the current post is set or a fatal error occurs. *Optional*
 
 ### events
 

@@ -6,12 +6,15 @@ var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
 var parallel = require('run-parallel')
-var qs = require('querystring')
 Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
 	if (!options || !options.linkifier || !options.butler) {
 		throw new Error('Expected linkifier and butler properties on options object.')
+	}
+	var BASE_DATA = {
+		postList: [],
+		posts: {}
 	}
 	var butler = options.butler
 	cb = oneTime(cb)
@@ -24,8 +27,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: {},
-			partials: { post: '' },
+			data: extend(BASE_DATA, { current: '_empty' }),
+			partials: { post: '', _empty: '' },
 			staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
@@ -34,17 +37,13 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			return filename && !!ractive.partials[filename]
 		}
 
-		function setCurrent(currentPostOrString, onLoadCb) {
-			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
-
-			var query = {}
-			if (typeof currentPostOrString === 'string') {
-				var startOfQuery = currentPostOrString.indexOf('?')
-				if (startOfQuery !== -1) {
-					query = qs.parse(currentPostOrString.slice(startOfQuery + 1))
-					currentPostOrString = currentPostOrString.slice(0, startOfQuery)
-				}
+		function setCurrent(currentPostOrString, setCurrentData, onLoadCb) {
+			if (typeof setCurrentData === 'function') {
+				onLoadCb = setCurrentData
+				setCurrentData = {}
 			}
+			if (!onLoadCb) onLoadCb = function (err) { if (err) throw err }
+			if (!setCurrentData) setCurrentData = {}
 
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
@@ -53,8 +52,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					if (err) return onLoadCb(err)
 
 					data.removeDots = removeDots
-					ractive.reset(extend(options.data || {}, { querystring: query }, data)) // reset() removes old data
-
+					ractive.resetPartial(currPost.filename, '') // Fewer ractive warnings :)
+					ractive.reset(extend(BASE_DATA, options.data || {}, setCurrentData, data)) // reset() removes old data
 					scan(currPost, util, state, currentFilename === currPost.filename)
 					currentFilename = currPost.filename
 
@@ -115,8 +114,7 @@ function render(linkifier, post) {
 function scan(post, util, state, thisPostChanged) {
 	var rendered = util.renderPost(post)
 
-	// The following line causes a ractive warning if the "current" template is undefined
-	util.resetPartial(post.filename, rendered.templateString.replace('{{{html}}}', '{{>current}}'))
+	util.resetPartial(post.filename, '')
 
 	extendMapOfArraysMutate(state.filenameUuidsMap, rendered.filenameUuidsMap)
 	extendMutate(state.uuidArgumentsMap, rendered.uuidArgumentsMap)
@@ -129,6 +127,11 @@ function scan(post, util, state, thisPostChanged) {
 		var partialData = extend(post.metadata, templateArgs)
 		util.resetPartial(uuid, makePartialString(post.filename, partialData))
 	})
+
+	console.dir(state.filenameUuidsMap) //[post.filename]
+	// The following line causes a ractive warning if the "current" template is undefined
+	util.resetPartial(post.filename, rendered.templateString.replace('{{{html}}}', '{{>current}}'))
+	console.dir('END RESET')
 
 	// Fetch any files that were found
 	var filenamesToFetch = Object.keys(state.filenameUuidsMap).filter(function (filename) {
@@ -159,7 +162,6 @@ function makePartialString(partialName, partialContext) {
 	partialContext = (partialContext ? JSON.stringify(partialContext) : '')
 	return '{{>\'' + partialName + '\' ' + partialContext + '}}'
 }
-
 
 function extendMapOfArraysMutate(map1, map2) {
 	Object.keys(map1).concat(Object.keys(map2)).forEach(function (key) {
