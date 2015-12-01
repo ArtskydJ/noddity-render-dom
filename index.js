@@ -29,10 +29,13 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			el: options.el,
 			data: extend(BASE_DATA, { current: '_empty' }),
 			partials: { post: '', _empty: '' },
-			staticDelimiters: [ '[[static]]', '[[/static]]' ],
-			staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
+			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
+			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
 		})
+		function resetPartial(partialName, templateString) {
+			ractive.resetPartial(partialName, '[[=[[static]] [[/static]]=]]\n' + templateString) // See issue #18
+		}
 		function partialExists(filename) {
 			return filename && !!ractive.partials[filename]
 		}
@@ -52,7 +55,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					if (err) return onLoadCb(err)
 
 					data.removeDots = removeDots
-					ractive.resetPartial(currPost.filename, '') // Fewer ractive warnings :)
+					resetPartial(currPost.filename, '')
 					ractive.reset(extend(BASE_DATA, options.data || {}, setCurrentData, data)) // reset() removes old data
 					scan(currPost, util, state, currentFilename === currPost.filename)
 					currentFilename = currPost.filename
@@ -70,7 +73,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			renderPost: renderPost,
 			emit: setCurrent.emit.bind(setCurrent),
 			partialExists: partialExists,
-			resetPartial: ractive.resetPartial.bind(ractive)
+			resetPartial: resetPartial
 		}
 
 		butler.on('post changed', function (filename, post) {
