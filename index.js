@@ -5,7 +5,6 @@ var extendMutate = require('xtend/mutable')
 var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
-var parallel = require('run-parallel')
 Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
@@ -18,17 +17,18 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 	}
 	var butler = options.butler
 	cb = oneTime(cb)
-	var renderPost = render.bind(null, options.linkifier)
 
 	postOrString(rootPostOrString, butler, function (err, rootPost) {
 		if (err) return cb(err)
-		var state = renderPost(rootPost)
+		var state = {
+			filenameUuidsMap: {},
+			uuidArgumentsMap: {}
+		}
 		var currentFilename = ''
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: extend(BASE_DATA, { current: '_empty' }),
-			partials: { post: '', _empty: '' },
+			data: BASE_DATA,
 			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
@@ -55,7 +55,6 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					if (err) return onLoadCb(err)
 
 					data.removeDots = removeDots
-					resetPartial(currPost.filename, '')
 					ractive.reset(extend(BASE_DATA, options.data || {}, setCurrentData, data)) // reset() removes old data
 					scan(currPost, util, state, currentFilename === currPost.filename)
 					currentFilename = currPost.filename
@@ -70,7 +69,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		var util = {
 			getPost: butler.getPost,
-			renderPost: renderPost,
+			renderPost: render.bind(null, options.linkifier),
 			emit: setCurrent.emit.bind(setCurrent),
 			partialExists: partialExists,
 			resetPartial: resetPartial
@@ -117,7 +116,8 @@ function render(linkifier, post) {
 function scan(post, util, state, thisPostChanged) {
 	var rendered = util.renderPost(post)
 
-	util.resetPartial(post.filename, '')
+	// The following line causes a ractive warning if the "current" template is undefined
+	util.resetPartial(post.filename, rendered.templateString.replace('{{{html}}}', '{{>current}}'))
 
 	extendMapOfArraysMutate(state.filenameUuidsMap, rendered.filenameUuidsMap)
 	extendMutate(state.uuidArgumentsMap, rendered.uuidArgumentsMap)
@@ -131,32 +131,14 @@ function scan(post, util, state, thisPostChanged) {
 		util.resetPartial(uuid, makePartialString(post.filename, partialData))
 	})
 
-	console.dir(state.filenameUuidsMap) //[post.filename]
-	// The following line causes a ractive warning if the "current" template is undefined
-	util.resetPartial(post.filename, rendered.templateString.replace('{{{html}}}', '{{>current}}'))
-	console.dir('END RESET')
-
 	// Fetch any files that were found
-	var filenamesToFetch = Object.keys(state.filenameUuidsMap).filter(function (filename) {
-		return rendered.filenameUuidsMap[filename] // File is in this post
-	})
-
-	var tasks = filenamesToFetch.map(function (filename) {
-		return function (next) {
-			return util.getPost(filename, function (err, childPost) {
-				if (err) {
-					util.emit('error', err)
-					next(null, null)
-				} else {
-					next(null, childPost)
-				}
-			})
-		}
-	})
-	parallel(tasks, function (_, childrenPosts) {
-		var actualPosts = childrenPosts.filter(Boolean)
-		actualPosts.forEach(function (childPost) {
-			scan(childPost, util, state)
+	Object.keys(rendered.filenameUuidsMap).map(function (filename) {
+		util.getPost(filename, function (err, childPost) {
+			if (err) {
+				util.emit('error', err)
+			} else if (childPost) {
+				scan(childPost, util, state)
+			}
 		})
 	})
 }
