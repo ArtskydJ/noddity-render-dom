@@ -26,13 +26,10 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			el: options.el,
 			data: {},
 			partials: { post: '' },
-			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
-			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
+			staticDelimiters: [ '[[static]]', '[[/static]]' ],
+			staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
 		})
-		function resetPartial(partialName, templateString) {
-			ractive.resetPartial(partialName, '[[=[[static]] [[/static]]=]]\n' + templateString) // horrible hack
-		}
 		function partialExists(filename) {
 			return filename && !!ractive.partials[filename]
 		}
@@ -74,7 +71,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			renderPost: renderPost,
 			emit: setCurrent.emit.bind(setCurrent),
 			partialExists: partialExists,
-			resetPartial: resetPartial
+			resetPartial: ractive.resetPartial.bind(ractive)
 		}
 
 		butler.on('post changed', function (filename, post) {
