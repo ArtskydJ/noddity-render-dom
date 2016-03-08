@@ -1,4 +1,4 @@
-var test = require('tape')
+var test = require('tape-catch')
 var makeTestState = require('./helpers/test-state')
 
 test('call the callback when initially loaded (post object style)', function(t) {

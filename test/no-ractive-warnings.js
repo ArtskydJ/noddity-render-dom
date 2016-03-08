@@ -1,4 +1,4 @@
-var test = require('tape')
+var test = require('tape-catch')
 var Ractive = require('ractive')
 var makeTestState = require('./helpers/test-state')
 

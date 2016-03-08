@@ -5,7 +5,6 @@ var extendMutate = require('xtend/mutable')
 var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
-Ractive.DEBUG = false
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
 	if (!options || !options.linkifier || !options.butler) {
@@ -51,15 +50,26 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
 
-				augmentCurrentData(currPost, butler, function (err, data) {
-					if (err) return onLoadCb(err)
+				scan(currPost, util, state, currentFilename === currPost.filename, function() {
+					var startingData = extend(BASE_DATA, options.data || {}, setCurrentData, {
+						removeDots: removeDots,
+						metadata: currPost.metadata,
+						current: currPost.filename
+					})
 
-					data.removeDots = removeDots
-					ractive.reset(extend(BASE_DATA, options.data || {}, setCurrentData, data)) // reset() removes old data
-					scan(currPost, util, state, currentFilename === currPost.filename)
 					currentFilename = currPost.filename
 
+					ractive.reset(startingData) // reset() removes old data
+
 					onLoadCb(null)
+
+					augmentCurrentData(currPost, butler, function (err, data) {
+						if (err) {
+							console.error(err)
+						}
+
+						ractive.set(data)
+					})
 				})
 			})
 		}
@@ -113,7 +123,22 @@ function render(linkifier, post) {
 	}
 }
 
-function scan(post, util, state, thisPostChanged) {
+function callAfter(workerFunction, cb) {
+	var currentlyRunning = 0
+	return function runAnother() {
+		Array.prototype.push.call(arguments, function done() {
+			currentlyRunning--
+			if (currentlyRunning === 0) {
+				cb()
+			}
+		})
+		currentlyRunning++
+		workerFunction.apply(null, arguments)
+	}
+}
+
+function scan(post, util, state, thisPostChanged, cb) {
+	cb = cb || function noop() {}
 	var rendered = util.renderPost(post)
 
 	// The following line causes a ractive warning if the "current" template is undefined
@@ -131,16 +156,31 @@ function scan(post, util, state, thisPostChanged) {
 		util.resetPartial(uuid, makePartialString(post.filename, partialData))
 	})
 
-	// Fetch any files that were found
-	Object.keys(rendered.filenameUuidsMap).map(function (filename) {
+	var fetch = callAfter(fetchPost, cb)
+
+	function fetchPost(filename, cb) {
 		util.getPost(filename, function (err, childPost) {
 			if (err) {
+				console.error(err)
 				util.emit('error', err)
+				cb()
 			} else if (childPost) {
-				scan(childPost, util, state)
+				scan(childPost, util, state, null, cb)
+			} else {
+				cb()
 			}
 		})
-	})
+	}
+
+	// Fetch any files that were found
+	var postsToLoad = Object.keys(rendered.filenameUuidsMap)
+	if (postsToLoad.length > 0) {
+		postsToLoad.forEach(function(filename) {
+			fetch(filename)
+		})
+	} else {
+		cb()
+	}
 }
 
 function makePartialString(partialName, partialContext) {
@@ -178,9 +218,7 @@ function augmentCurrentData(post, butler, cb) {
 				posts: posts.reduce(function(posts, post) {
 					posts[removeDots(post.filename)] = post
 					return posts
-				}, {}),
-				metadata: post.metadata,
-				current: post.filename
+				}, {})
 			}))
 		}
 	})

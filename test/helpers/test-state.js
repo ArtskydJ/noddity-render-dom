@@ -3,6 +3,7 @@ var renderDom = require('../../index.js')
 var levelmem = require('level-mem')
 var Butler = require('noddity-butler')
 var Linkify = require('noddity-linkifier')
+require('ractive').DEBUG = false
 
 module.exports = function testState() {
 	var retrieval = new TestRetrieval()
