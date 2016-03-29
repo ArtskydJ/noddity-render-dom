@@ -1,4 +1,4 @@
-var test = require('tape')
+var test = require('tape-catch')
 var renderDom = require('../index.js')
 
 test('required options', function (t) {
@@ -6,7 +6,7 @@ test('required options', function (t) {
 	var butler = { getPost: noop }
 	var linkifier = { linkify: noop }
 	var goodOpts = { butler: butler, linkifier: linkifier }
-	
+
 	t.throws(function () {
 		renderDom()
 	}, 'No arguments')

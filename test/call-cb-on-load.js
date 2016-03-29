@@ -1,4 +1,4 @@
-var test = require('tape')
+var test = require('tape-catch')
 var makeTestState = require('./helpers/test-state')
 
 test('call the callback when initially loaded (post object style)', function(t) {
@@ -21,7 +21,7 @@ test('call the callback when initially loaded (post object style)', function(t) 
 				t.notOk(err, 'no error')
 				setCurrent(childPost, function (err) {
 					t.notOk(err, 'no error')
-					t.equal(setCurrent.ractive.toHTML(), 'container <p>main   main</p> container')
+					t.equal(setCurrent.ractive.toHTML(), 'container <p>main <p>x</p> a b c d main</p> container')
 					t.end()
 				})
 			})
@@ -45,7 +45,7 @@ test('call the callback when initially loaded (post filename style)', function(t
 		t.notOk(err, 'no error')
 		setCurrent('file1.md', function (err) {
 			t.notOk(err, 'no error')
-			t.equal(setCurrent.ractive.toHTML(), 'container <p>main   main</p> container')
+			t.equal(setCurrent.ractive.toHTML(), 'container <p>main <p>x</p> a b c d main</p> container')
 			t.end()
 		})
 	})

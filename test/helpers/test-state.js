@@ -3,13 +3,14 @@ var renderDom = require('../../index.js')
 var levelmem = require('level-mem')
 var Butler = require('noddity-butler')
 var Linkify = require('noddity-linkifier')
+require('ractive').DEBUG = false
 
-module.exports = function testState() {
-	var retrieval = new TestRetrieval()
+module.exports = function testState(retrieval, butlerOptions) {
+	retrieval = retrieval || new TestRetrieval()
 	var db = levelmem('no location', {
 		valueEncoding: require('noddity-butler/test/retrieval/encoding.js')
 	})
-	var butler = new Butler(retrieval, db, {
+	var butler = new Butler(retrieval, db, butlerOptions || {
 		refreshEvery: 100
 	})
 	var linkifier = new Linkify('#/prefix/')
@@ -25,6 +26,7 @@ module.exports = function testState() {
 
 	return {
 		retrieval: retrieval,
-		render: render
+		render: render,
+		butler: butler
 	}
 }
