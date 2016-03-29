@@ -6,13 +6,14 @@ var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
 
+var BASE_DATA = {
+	postList: [],
+	posts: {}
+}
+
 module.exports = function renderDom(rootPostOrString, options, cb) {
 	if (!options || !options.linkifier || !options.butler) {
 		throw new Error('Expected linkifier and butler properties on options object.')
-	}
-	var BASE_DATA = {
-		postList: [],
-		posts: {}
 	}
 	var butler = options.butler
 	cb = oneTime(cb)
@@ -27,7 +28,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: BASE_DATA,
+			data: extend(BASE_DATA),
 			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
@@ -50,25 +51,29 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
 
-				scan(currPost, util, state, currentFilename === currPost.filename, function() {
-					var startingData = extend(BASE_DATA, options.data || {}, setCurrentData, {
-						removeDots: removeDots,
-						metadata: currPost.metadata,
-						current: currPost.filename
-					})
+				augmentCurrentData(currPost, butler, { local: true }, function(err, postListData) {
+					if (err) return onLoadCb(err)
 
-					currentFilename = currPost.filename
+					scan(currPost, util, state, currentFilename === currPost.filename, function() {
+						var startingData = extend(BASE_DATA, options.data || {}, postListData, setCurrentData, {
+							removeDots: removeDots,
+							metadata: currPost.metadata,
+							current: currPost.filename
+						})
 
-					ractive.reset(startingData) // reset() removes old data
+						currentFilename = currPost.filename
 
-					onLoadCb(null)
+						ractive.reset(startingData) // reset() removes old data
 
-					augmentCurrentData(currPost, butler, function (err, data) {
-						if (err) {
-							console.error(err)
-						}
+						onLoadCb(null)
 
-						ractive.set(data)
+						augmentCurrentData(currPost, butler, { local: false }, function(err, data) {
+							if (err) {
+								console.error(err)
+							}
+
+							ractive.set(data)
+						})
 					})
 				})
 			})
@@ -148,13 +153,16 @@ function scan(post, util, state, thisPostChanged, cb) {
 	extendMutate(state.uuidArgumentsMap, rendered.uuidArgumentsMap)
 
 	// Create embedded contexts
-	;(state.filenameUuidsMap[post.filename] || []).filter(function (uuid) {
-		return thisPostChanged || !util.partialExists(uuid)
-	}).forEach(function (uuid) {
-		var templateArgs = state.uuidArgumentsMap[uuid]
-		var partialData = extend(post.metadata, templateArgs)
-		util.resetPartial(uuid, makePartialString(post.filename, partialData))
-	})
+	var uuids = state.filenameUuidsMap[post.filename]
+	if (state.filenameUuidsMap[post.filename]) {
+		uuids.filter(function (uuid) {
+			return thisPostChanged || !util.partialExists(uuid)
+		}).forEach(function (uuid) {
+			var templateArgs = state.uuidArgumentsMap[uuid]
+			var partialData = extend(post.metadata, templateArgs)
+			util.resetPartial(uuid, makePartialString(post.filename, partialData))
+		})
+	}
 
 	var fetch = callAfter(fetchPost, cb)
 
@@ -204,8 +212,8 @@ function postOrString(post, butler, cb) {
 	}
 }
 
-function augmentCurrentData(post, butler, cb) {
-	butler.getPosts(function(err, posts) {
+function augmentCurrentData(post, butler, options, cb) {
+	butler.getPosts(options, function(err, posts) {
 		if (err) {
 			cb(err)
 		} else {
