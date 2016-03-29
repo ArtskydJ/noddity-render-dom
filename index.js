@@ -141,7 +141,7 @@ function scan(post, util, state, thisPostChanged, cb) {
 
 	// Create embedded contexts
 	var uuids = state.filenameUuidsMap[post.filename]
-	if (state.filenameUuidsMap[post.filename]) {
+	if (uuids) {
 		uuids.filter(function (uuid) {
 			return thisPostChanged || !util.partialExists(uuid)
 		}).forEach(function (uuid) {
