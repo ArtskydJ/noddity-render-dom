@@ -5,6 +5,7 @@ var extendMutate = require('xtend/mutable')
 var uuid = require('random-uuid-v4')
 var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
+var each = require('async-each')
 
 var BASE_DATA = {
 	postList: [],
@@ -128,20 +129,6 @@ function render(linkifier, post) {
 	}
 }
 
-function callAfter(workerFunction, cb) {
-	var currentlyRunning = 0
-	return function runAnother() {
-		Array.prototype.push.call(arguments, function done() {
-			currentlyRunning--
-			if (currentlyRunning === 0) {
-				cb()
-			}
-		})
-		currentlyRunning++
-		workerFunction.apply(null, arguments)
-	}
-}
-
 function scan(post, util, state, thisPostChanged, cb) {
 	cb = cb || function noop() {}
 	var rendered = util.renderPost(post)
@@ -164,8 +151,6 @@ function scan(post, util, state, thisPostChanged, cb) {
 		})
 	}
 
-	var fetch = callAfter(fetchPost, cb)
-
 	function fetchPost(filename, cb) {
 		util.getPost(filename, function (err, childPost) {
 			if (err) {
@@ -183,9 +168,7 @@ function scan(post, util, state, thisPostChanged, cb) {
 	// Fetch any files that were found
 	var postsToLoad = Object.keys(rendered.filenameUuidsMap)
 	if (postsToLoad.length > 0) {
-		postsToLoad.forEach(function(filename) {
-			fetch(filename)
-		})
+		each(postsToLoad, fetchPost, cb)
 	} else {
 		cb()
 	}

@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/ArtskydJ/noddity-render-dom#readme",
   "dependencies": {
+    "async-each": "1.0.0",
     "make-object-an-emitter": "^1.0.1",
     "noddity-template-parser": "^1.0.4",
     "onetime": "^1.0.0",
