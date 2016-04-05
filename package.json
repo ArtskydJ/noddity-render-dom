@@ -1,6 +1,6 @@
 {
   "name": "noddity-render-dom",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Render Noddity posts to the DOM",
   "main": "index.js",
   "scripts": {
