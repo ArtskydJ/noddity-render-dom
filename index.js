@@ -39,6 +39,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		var postList = []
 		var posts = {}
 
+		posts[rootPost.filename] = rootPost
+
 		var state = {
 			filenameUuidsMap: {},
 			uuidArgumentsMap: {}
@@ -69,8 +71,6 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			})
 		})
 
-		updatePosts()
-
 		function resetPartial(partialName, templateString) {
 			ractive.resetPartial(partialName, '[[=[[static]] [[/static]]=]]\n' + templateString) // See issue #18
 		}
@@ -89,6 +89,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
 
+				posts[currPost.filename] = currPost
+
 				scan(currPost, util, state, currentFilename === currPost.filename, function() {
 					var startingData = extend(BASE_DATA, options.data || {}, setCurrentData, currPost.metadata, {
 						removeDots: removeDots,
@@ -101,6 +103,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					currentFilename = currPost.filename
 
 					ractive.reset(startingData) // reset() removes old data
+
+					updatePosts()
 
 					onLoadCb(null)
 				})
@@ -127,6 +131,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					scan(post, util, state, true)
 				}
 			}
+
+			posts[filename] = post
 		})
 
 		butler.on('index changed', updatePosts)

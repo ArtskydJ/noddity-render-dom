@@ -1,5 +1,4 @@
 var test = require('tape-catch')
-var Butler = require('noddity-butler')
 var makeTestState = require('./helpers/test-state')
 
 test('should not start loading posts until after rendering the first post', function(t) {
@@ -13,7 +12,7 @@ test('should not start loading posts until after rendering the first post', func
 		'file1.md': {
 			filename: 'file1.md',
 			metadata: { title: 'Some title', date: new Date() },
-			content: '?{{#postList}}{{filename}}!{{/postList}}'
+			content: '?{{posts.post.metadata.title}}'
 		}
 	}
 	var retrieval = {
@@ -29,6 +28,8 @@ test('should not start loading posts until after rendering the first post', func
 				})
 			} else if (!rendered) {
 				t.fail('Should not try to load ' + name)
+			} else {
+				cb(null, {})
 			}
 		}
 	}
@@ -44,8 +45,8 @@ test('should not start loading posts until after rendering the first post', func
 			t.notOk(err, 'no error')
 			setCurrent('file1.md', function(err) {
 				t.notOk(err)
-				t.equal(setCurrent.ractive.toHTML(), '<p>?file1.md!</p>')
 				rendered = true
+				t.equal(setCurrent.ractive.toHTML(), '<p>?TEMPLAAAATE</p>')
 				state.butler.stop()
 				t.end()
 			})
