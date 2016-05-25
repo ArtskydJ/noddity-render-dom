@@ -19,10 +19,8 @@ test('embedded templates', function(t) {
 				t.notOk(err, 'no error')
 				setCurrent(childPost, function (err) {
 					t.notOk(err, 'no error')
-					setTimeout(function () {
-						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lookit huh</p> post that I <em>totally</em> wrote</p>')
-						t.end()
-					}, 50)
+					t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah lookit wat lookit huh</p> post that I <em>totally</em> wrote</p>')
+					t.end()
 				})
 			})
 		})
@@ -46,10 +44,8 @@ test('three markdown files deep', function(t) {
 				t.notOk(err, 'no error')
 				setCurrent(childPost, function (err) {
 					t.notOk(err, 'no error')
-					setTimeout(function() {
-						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah <p>lookit wat</p> <p>lookit huh</p></p> post that I <em>totally</em> wrote</p>')
-						t.end()
-					}, 100)
+					t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah <p>lookit wat</p> <p>lookit huh</p></p> post that I <em>totally</em> wrote</p>')
+					t.end()
 				})
 			})
 		})
@@ -71,10 +67,8 @@ test('filename starting with a number', function(t) {
 				t.notOk(err, 'no error')
 				setCurrent(childPost, function (err) {
 					t.notOk(err, 'no error')
-					setTimeout(function() {
-						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
-						t.end()
-					}, 10)
+					t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+					t.end()
 				})
 			})
 		})
@@ -93,10 +87,8 @@ test('render by filename instead of post objects', function(t) {
 
 		setCurrent('file1.md', function (err) {
 			t.notOk(err, 'no error')
-			setTimeout(function() {
-				t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
-				t.end()
-			}, 10)
+			t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+			t.end()
 		})
 	})
 })
@@ -117,6 +109,7 @@ test('backwards compatibility for {{{html}}}', function(t) {
 				t.equal(setCurrent.ractive.toHTML(), '<p>This is a post that I <em>totally</em> wrote</p> <p>lol yeah</p>')
 
 				state.retrieval.addPost('post', { title: 'TEMPLAAAATE', markdown: false }, '__ {{{html}}} ::2.md::')
+
 				setTimeout(function() {
 					t.equal(setCurrent.ractive.toHTML(), '__ <p>This is a post that I <em>totally</em> wrote</p> <p>lol yeah</p>')
 					t.end()
@@ -140,22 +133,16 @@ test('[a,b,a].forEach(setCurrent)', function(t) {
 
 		setCurrent('a.md', function (err) {
 			t.notOk(err, 'no error')
-			setTimeout(function() {
-				t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
-				setCurrent('b.md', function (err) {
+			t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+			setCurrent('b.md', function (err) {
+				t.notOk(err, 'no error')
+				t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>roflcopter</p> post that I <strong>wish</strong> I wrote</p>')
+				setCurrent('a.md', function (err) {
 					t.notOk(err, 'no error')
-					setTimeout(function() {
-						t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>roflcopter</p> post that I <strong>wish</strong> I wrote</p>')
-						setCurrent('a.md', function (err) {
-							t.notOk(err, 'no error')
-							setTimeout(function() {
-								t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
-								t.end()
-							}, 2000)
-						})
-					}, 1000)
+					t.equal(setCurrent.ractive.toHTML(), '<p>This is a <p>lol yeah</p> post that I <em>totally</em> wrote</p>')
+					t.end()
 				})
-			}, 10)
+			})
 		})
 	})
 })

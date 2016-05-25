@@ -4,7 +4,7 @@
   "description": "Render Noddity posts to the DOM",
   "main": "index.js",
   "scripts": {
-    "test": "tape test/*.js"
+    "test": "tape test/*.js | faucet"
   },
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
     "xtend": "^4.0.0"
   },
   "devDependencies": {
+    "faucet": "0.0.1",
     "level-mem": "^0.18.0",
     "noddity-butler": "~2.3.0",
     "noddity-linkifier": "^2.1.0",

@@ -7,9 +7,19 @@ var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
 var each = require('async-each')
 
-var BASE_DATA = {
-	postList: [],
-	posts: {}
+function postsToPostList(posts) {
+	return posts.reverse().filter(function(post) {
+		return typeof post.metadata.title === 'string' && post.metadata.date
+	}).map(function(post) {
+		return extend(post, post.metadata)
+	})
+}
+
+function postsToPostObject(posts) {
+	return posts.reduce(function(posts, post) {
+		posts[removeDots(post.filename)] = post
+		return posts
+	}, {})
 }
 
 module.exports = function renderDom(rootPostOrString, options, cb) {
@@ -19,8 +29,13 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 	var butler = options.butler
 	cb = oneTime(cb)
 
-	postOrString(rootPostOrString, butler, function (err, rootPost) {
+	postOrString(rootPostOrString, butler, function(err, rootPost) {
 		if (err) return cb(err)
+		var postList = []
+		var posts = {}
+
+		posts[rootPost.filename] = rootPost
+
 		var state = {
 			filenameUuidsMap: {},
 			uuidArgumentsMap: {}
@@ -29,11 +44,31 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: extend(BASE_DATA),
+			data: {
+				postList: [],
+				posts: {}
+			},
 			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
 		})
+
+		var updatePosts = onlyOneAtATime(function updatePosts(done) {
+			butler.getPosts(function(err, postsArray) {
+				if (err) return console.error(err)
+
+				postList = postsToPostList(postsArray)
+				posts = postsToPostObject(postsArray)
+
+				ractive.set({
+					postList: postList,
+					posts: posts
+				})
+
+				done()
+			})
+		})
+
 		function resetPartial(partialName, templateString) {
 			ractive.resetPartial(partialName, '[[=[[static]] [[/static]]=]]\n' + templateString) // See issue #18
 		}
@@ -52,31 +87,26 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			postOrString(currentPostOrString, butler, function (err, currPost) {
 				if (err) return onLoadCb(err)
 
-				augmentCurrentData(currPost, butler, { local: true }, function(err, postListData) {
-					if (err) return onLoadCb(err)
+				posts[currPost.filename] = currPost
 
-					scan(currPost, util, state, currentFilename === currPost.filename, function() {
-						var startingData = extend(BASE_DATA, options.data || {}, postListData, setCurrentData, {
-							removeDots: removeDots,
-							metadata: currPost.metadata,
-							current: currPost.filename
-						})
-
-						currentFilename = currPost.filename
-
-						ractive.reset(startingData) // reset() removes old data
-
-						onLoadCb(null)
-
-						augmentCurrentData(currPost, butler, { local: false }, function(err, data) {
-							if (err) {
-								console.error(err)
-							}
-
-							ractive.set(data)
-						})
+				scan(currPost, util, state, currentFilename === currPost.filename, function() {
+					var startingData = extend(options.data || {}, setCurrentData, currPost.metadata, {
+						removeDots: removeDots,
+						metadata: currPost.metadata,
+						current: currPost.filename,
+						postList: postList,
+						posts: posts
 					})
+
+					currentFilename = currPost.filename
+
+					ractive.reset(startingData) // reset() removes old data
+
+					updatePosts()
+
+					onLoadCb(null)
 				})
+
 			})
 		}
 
@@ -91,7 +121,9 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 			resetPartial: resetPartial
 		}
 
-		butler.on('post changed', function (filename, post) {
+		butler.on('post changed', function(filename, post) {
+			posts[filename] = post
+
 			if (partialExists(filename)) { // Only cares about posts that are in the system
 				if (filename === currentFilename) { // Current post changed
 					setCurrent(post)
@@ -100,6 +132,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 				}
 			}
 		})
+
+		butler.on('index changed', updatePosts)
 
 		scan(rootPost, util, state)
 		cb(null, setCurrent)
@@ -195,26 +229,19 @@ function postOrString(post, butler, cb) {
 	}
 }
 
-function augmentCurrentData(post, butler, options, cb) {
-	butler.getPosts(options, function(err, posts) {
-		if (err) {
-			cb(err)
-		} else {
-			cb(null, extend(post.metadata, {
-				postList: posts.reverse().filter(function(post) {
-					return typeof post.metadata.title === 'string' && post.metadata.date
-				}).map(function(post) {
-					return extend(post, post.metadata)
-				}),
-				posts: posts.reduce(function(posts, post) {
-					posts[removeDots(post.filename)] = post
-					return posts
-				}, {})
-			}))
-		}
-	})
-}
-
 function removeDots(str) {
 	return str.replace(/\./g, '')
+}
+
+function onlyOneAtATime(fn) {
+	var running = false
+
+	return function() {
+		if (!running) {
+			running = true
+			fn(function() {
+				running = false
+			})
+		}
+	}
 }
