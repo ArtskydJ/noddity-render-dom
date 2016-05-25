@@ -7,11 +7,6 @@ var oneTime = require('onetime')
 var makeEmitter = require('make-object-an-emitter')
 var each = require('async-each')
 
-var BASE_DATA = {
-	postList: [],
-	posts: {}
-}
-
 function postsToPostList(posts) {
 	return posts.reverse().filter(function(post) {
 		return typeof post.metadata.title === 'string' && post.metadata.date
@@ -49,7 +44,10 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 
 		var ractive = new Ractive({
 			el: options.el,
-			data: extend(BASE_DATA),
+			data: {
+				postList: [],
+				posts: {}
+			},
 			// staticDelimiters: [ '[[static]]', '[[/static]]' ],
 			// staticTripleDelimiters: [ '[[[static]]]', '[[[/static]]]' ],
 			template: makePartialString(rootPost.filename)
@@ -92,7 +90,7 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 				posts[currPost.filename] = currPost
 
 				scan(currPost, util, state, currentFilename === currPost.filename, function() {
-					var startingData = extend(BASE_DATA, options.data || {}, setCurrentData, currPost.metadata, {
+					var startingData = extend(options.data || {}, setCurrentData, currPost.metadata, {
 						removeDots: removeDots,
 						metadata: currPost.metadata,
 						current: currPost.filename,
@@ -124,6 +122,8 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 		}
 
 		butler.on('post changed', function(filename, post) {
+			posts[filename] = post
+
 			if (partialExists(filename)) { // Only cares about posts that are in the system
 				if (filename === currentFilename) { // Current post changed
 					setCurrent(post)
@@ -131,8 +131,6 @@ module.exports = function renderDom(rootPostOrString, options, cb) {
 					scan(post, util, state, true)
 				}
 			}
-
-			posts[filename] = post
 		})
 
 		butler.on('index changed', updatePosts)
